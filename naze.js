@@ -2618,20 +2618,36 @@ Select Bot Settings:
 }
 			break
 			case 'iqc': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text && (!m.quoted || !m.quoted.text)) return m.reply(`Kirim/reply pesan *${prefix + command}* Teksnya`)
-				m.react('⏳')
-				let queryText = text ? text : m.quoted.text;
-				if (queryText.length >= 200) return m.reply('Max 200 Length!')
-				let res;
-				try {
-					res = await fetchApi('/create/iqc', { text: queryText }, { stream: true });
-					await m.reply({ image: { url: res }, caption: global.mess.done })
-					setLimit(m, db)
-				} finally {
-					if (res && fs.existsSync(res)) fs.unlinkSync(res);
-				}
-			}
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!text && (!m.quoted || !m.quoted.text)) return m.reply(`Kirim/reply pesan *${prefix + command}* Teksnya`)
+    m.react('⏳')
+    let queryText = text ? text : m.quoted.text;
+    if (queryText.length >= 200) return m.reply('Max 200 Length!')
+
+    // Siapkan parameter dinamis untuk gaya iPhone
+    const now = new Date()
+    const jam = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
+    const bat = Math.floor(Math.random() * 91) + 10 // 10–100
+    const carriers = ['Telkomsel', 'Indosat', 'XL', 'Smartfren', 'Three', 'By.U', 'Axis']
+    const carrier = carriers[Math.floor(Math.random() * carriers.length)]
+    const signal = Math.floor(Math.random() * 4) + 1 // 1–4 bar
+    const emojiStyle = 'apple'
+
+    const apiUrl = `https://brat.siputzx.my.id/iphone-quoted?time=${jam}&messageText=${encodeURIComponent(queryText)}&batteryPercentage=${bat}&carrierName=${carrier}&signalStrength=${signal}&emojiStyle=${emojiStyle}`
+
+    try {
+        // Ambil gambar dari API (response berupa buffer)
+        const response = await axios.get(apiUrl, { responseType: 'arraybuffer' })
+        const imageBuffer = Buffer.from(response.data, 'binary')
+
+        // Kirim gambar hasil quote
+        await m.reply({ image: imageBuffer, caption: global.mess.done })
+        setLimit(m, db)
+    } catch (e) {
+        console.error(e)
+        m.reply(`Gagal membuat quote: ${e.message}`)
+    }
+}
 			break
 			case 'qc':
 			case 'quote':
@@ -3716,112 +3732,234 @@ Select Bot Settings:
 			}
 			break
 			case 'tekateki': {
-				if (iGame(tekateki, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
-				const { result: hasil } = await fetchApi('/games/tekateki');
-				let { key } = await m.reply(`🎮 Teka Teki Berikut :\n\n${hasil.soal}\n\nWaktu : 60s\nHadiah *+3499*`)
-				tekateki[m.chat + key.id] = {
-					jawaban: hasil.jawaban.toLowerCase(),
-					id: key.id
-				}
-				await sleep(60000)
-				if (rdGame(tekateki, m.chat, key.id)) {
-					m.reply('Waktu Habis\nJawaban: ' + tekateki[m.chat + key.id].jawaban)
-					delete tekateki[m.chat + key.id]
-				}
-			}
+    if (iGame(tekateki, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
+
+    try {
+        const apiURL = 'https://raw.githubusercontent.com/BochilTeam/database/master/games/tekateki.json'
+        let res = await axios.get(apiURL)
+        let dataGames = res.data
+
+        if (!dataGames || dataGames.length === 0) throw new Error('empty')
+
+        let randomIndex = Math.floor(Math.random() * dataGames.length)
+        let soalDipilih = dataGames[randomIndex]
+
+        let { key } = await m.reply(`🎮 Teka Teki Berikut :\n\n${soalDipilih.soal}\n\nWaktu : 60s\nHadiah *+3499*`)
+
+        tekateki[m.chat + key.id] = {
+            jawaban: soalDipilih.jawaban.toLowerCase(),
+            id: key.id
+        }
+
+        await sleep(60000)
+
+        if (rdGame(tekateki, m.chat, key.id)) {
+            m.reply('Waktu Habis\nJawaban: ' + tekateki[m.chat + key.id].jawaban)
+            delete tekateki[m.chat + key.id]
+        }
+    } catch (e) {
+        console.log(e)
+        m.reply('Gagal mengambil soal teka-teki, coba lagi nanti.')
+    }
+}
 			break
 			case 'tebaklirik': {
-				if (iGame(tebaklirik, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
-				const { result: hasil } = await fetchApi('/games/tebaklirik');
-				let { key } = await m.reply(`🎮 Tebak Lirik Berikut :\n\n${hasil.soal}\n\nWaktu : 90s\nHadiah *+4299*`)
-				tebaklirik[m.chat + key.id] = {
-					jawaban: hasil.jawaban.toLowerCase(),
-					id: key.id
-				}
-				await sleep(90000)
-				if (rdGame(tebaklirik, m.chat, key.id)) {
-					m.reply('Waktu Habis\nJawaban: ' + tebaklirik[m.chat + key.id].jawaban)
-					delete tebaklirik[m.chat + key.id]
-				}
-			}
+    if (iGame(tebaklirik, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
+
+    try {
+        const apiURL = 'https://raw.githubusercontent.com/BochilTeam/database/master/games/tebaklirik.json'
+        let res = await axios.get(apiURL)
+        let dataGames = res.data
+
+        if (!dataGames || dataGames.length === 0) throw new Error('empty')
+
+        let randomIndex = Math.floor(Math.random() * dataGames.length)
+        let soalDipilih = dataGames[randomIndex]
+
+        let { key } = await m.reply(`🎮 Tebak Lirik Berikut :\n\n${soalDipilih.soal}\n\nWaktu : 90s\nHadiah *+4299*`)
+
+        tebaklirik[m.chat + key.id] = {
+            jawaban: soalDipilih.jawaban.toLowerCase(),
+            id: key.id
+        }
+
+        await sleep(90000)
+
+        if (rdGame(tebaklirik, m.chat, key.id)) {
+            m.reply('Waktu Habis\nJawaban: ' + tebaklirik[m.chat + key.id].jawaban)
+            delete tebaklirik[m.chat + key.id]
+        }
+    } catch (e) {
+        console.log(e)
+        m.reply('Gagal mengambil soal tebak lirik, coba lagi nanti.')
+    }
+}
 			break
 			case 'tebakkata': {
-				if (iGame(tebakkata, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
-				const { result: hasil } = await fetchApi('/games/tebakkata');
-				let { key } = await m.reply(`🎮 Tebak Kata Berikut :\n\n${hasil.soal}\n\nWaktu : 60s\nHadiah *+3499*`)
-				tebakkata[m.chat + key.id] = {
-					jawaban: hasil.jawaban.toLowerCase(),
-					id: key.id
-				}
-				await sleep(60000)
-				if (rdGame(tebakkata, m.chat, key.id)) {
-					m.reply('Waktu Habis\nJawaban: ' + tebakkata[m.chat + key.id].jawaban)
-					delete tebakkata[m.chat + key.id]
-				}
-			}
+    if (iGame(tebakkata, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
+
+    try {
+        // Ambil data soal dari GitHub
+        const apiURL = 'https://raw.githubusercontent.com/BochilTeam/database/master/games/tebakkata.json'
+        let res = await axios.get(apiURL) // Pastikan axios sudah di‑require
+        let dataGames = res.data // Ini langsung array of objects
+        
+        if (!dataGames || dataGames.length === 0) throw new Error('empty')
+        
+        // Pilih satu soal secara random
+        let randomIndex = Math.floor(Math.random() * dataGames.length)
+        let soalDipilih = dataGames[randomIndex]
+
+        let { key } = await m.reply(`🎮 Tebak Kata Berikut :\n\n${soalDipilih.soal}\n\nWaktu : 60s\nHadiah *+3499*`)
+
+        tebakkata[m.chat + key.id] = {
+            jawaban: soalDipilih.jawaban.toLowerCase(),
+            id: key.id
+        }
+
+        await sleep(60000)
+
+        if (rdGame(tebakkata, m.chat, key.id)) {
+            m.reply('Waktu Habis\nJawaban: ' + tebakkata[m.chat + key.id].jawaban)
+            delete tebakkata[m.chat + key.id]
+        }
+    } catch (e) {
+        console.log(e)
+        m.reply('Gagal ambil soal, coba lagi nanti.')
+    }
+}
 			break
 			case 'family100': {
-				if (family100.hasOwnProperty(m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
-				const { result: hasil } = await fetchApi('/games/family100');
-				let { key } = await m.reply(`🎮 Tebak Kata Berikut :\n\n${hasil.soal}\n\nWaktu : 5m\nHadiah *+3499*`)
-				family100[m.chat] = {
-					soal: hasil.soal,
-					jawaban: hasil.jawaban,
-					terjawab: Array.from(hasil.jawaban, () => false),
-					id: key.id
-				}
-				await sleep(300000)
-				if (family100.hasOwnProperty(m.chat)) {
-					m.reply('Waktu Habis\nJawaban:\n- ' + family100[m.chat].jawaban.join('\n- '))
-					delete family100[m.chat]
-				}
-			}
+    if (family100.hasOwnProperty(m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
+    
+    try {
+        const apiURL = 'https://raw.githubusercontent.com/BochilTeam/database/master/games/family100.json'
+        let res = await axios.get(apiURL)
+        let dataGames = res.data
+
+        if (!dataGames || dataGames.length === 0) throw new Error('empty')
+
+        let randomIndex = Math.floor(Math.random() * dataGames.length)
+        let soalDipilih = dataGames[randomIndex]
+
+        let { key } = await m.reply(`🎮 Family 100 :\n\n${soalDipilih.soal}\n\nWaktu : 5m\nHadiah *+3499*`)
+
+        family100[m.chat] = {
+            soal: soalDipilih.soal,
+            jawaban: soalDipilih.jawaban,
+            terjawab: Array.from(soalDipilih.jawaban, () => false),
+            id: key.id
+        }
+
+        await sleep(300000)
+
+        if (family100.hasOwnProperty(m.chat)) {
+            let jawabanBelumTerjawab = family100[m.chat].jawaban.filter((_, idx) => !family100[m.chat].terjawab[idx])
+            m.reply('Waktu Habis\nJawaban yang belum terjawab:\n- ' + jawabanBelumTerjawab.join('\n- '))
+            delete family100[m.chat]
+        }
+    } catch (e) {
+        console.log(e)
+        m.reply('Gagal mengambil soal Family 100, coba lagi nanti.')
+    }
+}
 			break
 			case 'susunkata': {
-				if (iGame(susunkata, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
-				const { result: hasil } = await fetchApi('/games/susunkata');
-				let { key } = await m.reply(`🎮 Susun Kata Berikut :\n\n${hasil.soal}\nTipe : ${hasil.tipe}\n\nWaktu : 60s\nHadiah *+2989*`)
-				susunkata[m.chat + key.id] = {
-					jawaban: hasil.jawaban.toLowerCase(),
-					id: key.id
-				}
-				await sleep(60000)
-				if (rdGame(susunkata, m.chat, key.id)) {
-					m.reply('Waktu Habis\nJawaban: ' + susunkata[m.chat + key.id].jawaban)
-					delete susunkata[m.chat + key.id]
-				}
-			}
+    if (iGame(susunkata, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
+    
+    try {
+        const apiURL = 'https://raw.githubusercontent.com/BochilTeam/database/master/games/susunkata.json'
+        let res = await axios.get(apiURL)
+        let dataGames = res.data
+
+        if (!dataGames || dataGames.length === 0) throw new Error('empty')
+
+        let randomIndex = Math.floor(Math.random() * dataGames.length)
+        let soalDipilih = dataGames[randomIndex]
+
+        let { key } = await m.reply(`🎮 Susun Kata Berikut :\n\n${soalDipilih.soal}\nTipe : ${soalDipilih.tipe}\n\nWaktu : 60s\nHadiah *+2989*`)
+
+        susunkata[m.chat + key.id] = {
+            jawaban: soalDipilih.jawaban.toLowerCase(),
+            id: key.id
+        }
+
+        await sleep(60000)
+
+        if (rdGame(susunkata, m.chat, key.id)) {
+            m.reply('Waktu Habis\nJawaban: ' + susunkata[m.chat + key.id].jawaban)
+            delete susunkata[m.chat + key.id]
+        }
+    } catch (e) {
+        console.log(e)
+        m.reply('Gagal mengambil soal susun kata, coba lagi nanti.')
+    }
+}
 			break
 			case 'tebakkimia': {
-				if (iGame(tebakkimia, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
-				const { result: hasil } = await fetchApi('/games/tebakkimia');
-				let { key } = await m.reply(`🎮 Tebak Kimia Berikut :\n\n${hasil.unsur}\n\nWaktu : 60s\nHadiah *+3499*`)
-				tebakkimia[m.chat + key.id] = {
-					jawaban: hasil.lambang.toLowerCase(),
-					id: key.id
-				}
-				await sleep(60000)
-				if (rdGame(tebakkimia, m.chat, key.id)) {
-					m.reply('Waktu Habis\nJawaban: ' + tebakkimia[m.chat + key.id].jawaban)
-					delete tebakkimia[m.chat + key.id]
-				}
-			}
+    if (iGame(tebakkimia, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
+    
+    try {
+        const apiURL = 'https://raw.githubusercontent.com/BochilTeam/database/master/games/tebakkimia.json'
+        let res = await axios.get(apiURL)
+        let dataGames = res.data
+
+        if (!dataGames || dataGames.length === 0) throw new Error('empty')
+
+        let randomIndex = Math.floor(Math.random() * dataGames.length)
+        let soalDipilih = dataGames[randomIndex]
+
+        let { key } = await m.reply(`🎮 Tebak Kimia Berikut :\n\n${soalDipilih.unsur}\n\nWaktu : 60s\nHadiah *+3499*`)
+
+        tebakkimia[m.chat + key.id] = {
+            jawaban: soalDipilih.lambang.toLowerCase(),
+            id: key.id
+        }
+
+        await sleep(60000)
+
+        if (rdGame(tebakkimia, m.chat, key.id)) {
+            m.reply('Waktu Habis\nJawaban: ' + tebakkimia[m.chat + key.id].jawaban)
+            delete tebakkimia[m.chat + key.id]
+        }
+    } catch (e) {
+        console.log(e)
+        m.reply('Gagal mengambil soal tebak kimia, coba lagi nanti.')
+    }
+}
 			break
 			case 'caklontong': {
-				if (iGame(caklontong, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
-				const { result: hasil } = await fetchApi('/games/caklontong');
-				let { key } = await m.reply(`🎮 Jawab Pertanyaan Berikut :\n\n${hasil.soal}\n\nWaktu : 60s\nHadiah *+9999*`)
-				caklontong[m.chat + key.id] = {
-					...hasil,
-					jawaban: hasil.jawaban.toLowerCase(),
-					id: key.id
-				}
-				await sleep(60000)
-				if (rdGame(caklontong, m.chat, key.id)) {
-					m.reply(`Waktu Habis\nJawaban: ${caklontong[m.chat + key.id].jawaban}\n"${caklontong[m.chat + key.id].deskripsi}"`)
-					delete caklontong[m.chat + key.id]
-				}
-			}
+    if (iGame(caklontong, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
+
+    try {
+        const apiURL = 'https://raw.githubusercontent.com/BochilTeam/database/master/games/caklontong.json'
+        let res = await axios.get(apiURL)
+        let dataGames = res.data
+
+        if (!dataGames || dataGames.length === 0) throw new Error('empty')
+
+        let randomIndex = Math.floor(Math.random() * dataGames.length)
+        let soalDipilih = dataGames[randomIndex]
+
+        let { key } = await m.reply(`🎮 Jawab Pertanyaan Berikut :\n\n${soalDipilih.soal}\n\nWaktu : 60s\nHadiah *+9999*`)
+
+        caklontong[m.chat + key.id] = {
+            ...soalDipilih,
+            jawaban: soalDipilih.jawaban.toLowerCase(),
+            id: key.id
+        }
+
+        await sleep(60000)
+
+        if (rdGame(caklontong, m.chat, key.id)) {
+            m.reply(`Waktu Habis\nJawaban: ${caklontong[m.chat + key.id].jawaban}\n"${caklontong[m.chat + key.id].deskripsi}"`)
+            delete caklontong[m.chat + key.id]
+        }
+    } catch (e) {
+        console.log(e)
+        m.reply('Gagal mengambil soal caklontong, coba lagi nanti.')
+    }
+}
 			break
 			case 'tebaknegara': {
 				if (iGame(tebaknegara, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
@@ -3839,34 +3977,68 @@ Select Bot Settings:
 			}
 			break
 			case 'tebakgambar': {
-				if (iGame(tebakgambar, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
-				const { result: hasil } = await fetchApi('/games/tebakgambar');
-				let { key } = await naze.sendFileUrl(m.chat, hasil.img, `🎮 Tebak Gambar Berikut :\n\n${hasil.deskripsi}\n\nWaktu : 60s\nHadiah *+3499*`, m)
-				tebakgambar[m.chat + key.id] = {
-					jawaban: hasil.jawaban.toLowerCase(),
-					id: key.id
-				}
-				await sleep(60000)
-				if (rdGame(tebakgambar, m.chat, key.id)) {
-					m.reply('Waktu Habis\nJawaban: ' + tebakgambar[m.chat + key.id].jawaban)
-					delete tebakgambar[m.chat + key.id]
-				}
-			}
+    if (iGame(tebakgambar, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
+
+    try {
+        const apiURL = 'https://raw.githubusercontent.com/BochilTeam/database/master/games/tebakgambar.json'
+        let res = await axios.get(apiURL)
+        let dataGames = res.data
+
+        if (!dataGames || dataGames.length === 0) throw new Error('empty')
+
+        let randomIndex = Math.floor(Math.random() * dataGames.length)
+        let soalDipilih = dataGames[randomIndex]
+
+        let { key } = await naze.sendFileUrl(m.chat, soalDipilih.img, `🎮 Tebak Gambar Berikut :\n\n${soalDipilih.deskripsi}\n\nWaktu : 60s\nHadiah *+3499*`, m)
+
+        tebakgambar[m.chat + key.id] = {
+            jawaban: soalDipilih.jawaban.toLowerCase(),
+            id: key.id
+        }
+
+        await sleep(60000)
+
+        if (rdGame(tebakgambar, m.chat, key.id)) {
+            m.reply('Waktu Habis\nJawaban: ' + tebakgambar[m.chat + key.id].jawaban)
+            delete tebakgambar[m.chat + key.id]
+        }
+    } catch (e) {
+        console.log(e)
+        m.reply('Gagal mengambil soal tebak gambar, coba lagi nanti.')
+    }
+}
 			break
 			case 'tebakbendera': {
-				if (iGame(tebakbendera, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
-				const { result: hasil } = await fetchApi('/games/tebakbendera');
-				let { key } = await m.reply(`🎮 Tebak Bendera Berikut :\n\n*Bendera : ${hasil.bendera}*\n\nWaktu : 60s\nHadiah *+3499*`)
-				tebakbendera[m.chat + key.id] = {
-					jawaban: hasil.negara.toLowerCase(),
-					id: key.id
-				}
-				await sleep(60000)
-				if (rdGame(tebakbendera, m.chat, key.id)) {
-					m.reply('Waktu Habis\nJawaban: ' + tebakbendera[m.chat + key.id].jawaban)
-					delete tebakbendera[m.chat + key.id]
-				}
-			}
+    if (iGame(tebakbendera, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
+
+    try {
+        const apiURL = 'https://raw.githubusercontent.com/BochilTeam/database/master/games/tebakbendera.json'
+        let res = await axios.get(apiURL)
+        let dataGames = res.data
+
+        if (!dataGames || dataGames.length === 0) throw new Error('empty')
+
+        let randomIndex = Math.floor(Math.random() * dataGames.length)
+        let soalDipilih = dataGames[randomIndex]
+
+        let { key } = await m.reply(`🎮 Tebak Bendera Berikut :\n\n*Bendera : ${soalDipilih.flag}*\n\nWaktu : 60s\nHadiah *+3499*`)
+
+        tebakbendera[m.chat + key.id] = {
+            jawaban: soalDipilih.name.toLowerCase(),
+            id: key.id
+        }
+
+        await sleep(60000)
+
+        if (rdGame(tebakbendera, m.chat, key.id)) {
+            m.reply('Waktu Habis\nJawaban: ' + tebakbendera[m.chat + key.id].jawaban)
+            delete tebakbendera[m.chat + key.id]
+        }
+    } catch (e) {
+        console.log(e)
+        m.reply('Gagal mengambil soal tebak bendera, coba lagi nanti.')
+    }
+}
 			break
 			case 'tebakangka': case 'butawarna': case 'colorblind': {
 				if (iGame(tebakangka, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
