@@ -2303,106 +2303,122 @@ Select Bot Settings:
 			}
 			break
 			case 'texttospech': case 'tts': case 'tospech': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text) return m.reply('Mana text yg mau diubah menjadi audio?')
-				let anu
-				try {
-					anu = await fetchApi('/tools/tts', { text }, { stream: true });
-					m.reply({ audio: { url: anu }, ptt: true, mimetype: 'audio/mpeg' });
-					setLimit(m, db)
-				} finally {
-					if (anu && fs.existsSync(anu)) fs.unlinkSync(anu);
-				}
-			}
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!text) return m.reply('Mana text yg mau diubah menjadi audio?')
+    const path = require('path')
+    const os = require('os')
+    const tmpFile = path.join(os.tmpdir(), `tts-${Date.now()}.mp3`)
+    try {
+        // Google Translate TTS – gratis, tanpa API key
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=id&client=tw-ob`
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        })
+        if (!response.ok) throw new Error('Gagal mengambil audio dari Google TTS')
+        const buffer = await response.arrayBuffer()
+        await fs.promises.writeFile(tmpFile, Buffer.from(buffer))
+        await m.reply({ audio: { url: tmpFile }, ptt: true, mimetype: 'audio/mpeg' })
+        setLimit(m, db)
+    } catch (e) {
+        console.log(e)
+        m.reply(global.mess.fail)
+    } finally {
+        if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile)
+    }
+}
 			break
 			case 'translate': case 'tr': {
-				if (text && text == 'list') {
-					let list_tr = `╭──❍「 *Kode Bahasa* 」❍\n│• af : Afrikaans\n│• ar : Arab\n│• zh : Chinese\n│• en : English\n│• en-us : English (United States)\n│• fr : French\n│• de : German\n│• hi : Hindi\n│• hu : Hungarian\n│• is : Icelandic\n│• id : Indonesian\n│• it : Italian\n│• ja : Japanese\n│• ko : Korean\n│• la : Latin\n│• no : Norwegian\n│• pt : Portuguese\n│• pt : Portuguese\n│• pt-br : Portuguese (Brazil)\n│• ro : Romanian\n│• ru : Russian\n│• sr : Serbian\n│• es : Spanish\n│• sv : Swedish\n│• ta : Tamil\n│• th : Thai\n│• tr : Turkish\n│• vi : Vietnamese\n╰──────❍`;
-					m.reply(list_tr)
-				} else {
-					if (!m.quoted && (!text|| !args[1])) return m.reply(`Kirim/reply text dengan caption ${prefix + command}`)
-					let lang = args[0] ? args[0] : global.locale
-					let teks = args[1] ? args.slice(1).join(' ') : m.quoted.text
-					try {
-						let hasil = await fetchApi('/tools/translate', { text: teks, lang });
-						m.reply(`To : ${lang}\n${hasil.result.translate}`)
-					} catch (e) {
-						m.reply(`Lang *${lang}* Tidak Di temukan!\nSilahkan lihat list, ${prefix + command} list`)
-					}
-				}
-			}
+    if (text && text == 'list') {
+        let list_tr = `╭──❍「 *Kode Bahasa* 」❍\n│• af : Afrikaans\n│• ar : Arab\n│• zh : Chinese\n│• en : English\n│• en-us : English (United States)\n│• fr : French\n│• de : German\n│• hi : Hindi\n│• hu : Hungarian\n│• is : Icelandic\n│• id : Indonesian\n│• it : Italian\n│• ja : Japanese\n│• ko : Korean\n│• la : Latin\n│• no : Norwegian\n│• pt : Portuguese\n│• pt : Portuguese\n│• pt-br : Portuguese (Brazil)\n│• ro : Romanian\n│• ru : Russian\n│• sr : Serbian\n│• es : Spanish\n│• sv : Swedish\n│• ta : Tamil\n│• th : Thai\n│• tr : Turkish\n│• vi : Vietnamese\n╰──────❍`;
+        m.reply(list_tr)
+    } else {
+        if (!m.quoted && (!text || !args[1])) return m.reply(`Kirim/reply text dengan caption ${prefix + command}`)
+        let lang = args[0] ? args[0] : global.locale
+        let teks = args[1] ? args.slice(1).join(' ') : m.quoted.text
+        try {
+            // Google Translate gratis tanpa API key
+            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(lang)}&dt=t&q=${encodeURIComponent(teks)}`
+            const response = await fetch(url)
+            const json = await response.json()
+            const hasil = json[0][0][0]
+            m.reply(`To : ${lang}\n${hasil}`)
+        } catch (e) {
+            console.log(e)
+            m.reply(`Lang *${lang}* Tidak Di temukan!\nSilahkan lihat list, ${prefix + command} list`)
+        }
+    }
+}
 			break
 			case 'toqr': case 'qr': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text) return m.reply(`Ubah Text ke Qr dengan *${prefix + command}* textnya`)
-				m.react('⏳')
-				let anu;
-				try {
-					anu = await fetchApi('/tools/to-qr', { data: text }, { stream: true });
-					await m.reply({ image: { url: anu }, caption: 'Nih Bro' });
-					setLimit(m, db)
-				} finally {
-					if (anu && fs.existsSync(anu)) fs.unlinkSync(anu);
-				}
-			}
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!text) return m.reply(`Ubah Text ke Qr dengan *${prefix + command}* textnya`)
+    m.react('⏳')
+    const path = require('path')
+    const os = require('os')
+    const tmpFile = path.join(os.tmpdir(), `qr-${Date.now()}.png`)
+    try {
+        // API gratis tanpa key (api.qrserver.com)
+        const url = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(text)}`
+        const response = await fetch(url)
+        if (!response.ok) throw new Error('Gagal membuat QR')
+        const buffer = await response.arrayBuffer()
+        await fs.promises.writeFile(tmpFile, Buffer.from(buffer))
+        await m.reply({ image: { url: tmpFile }, caption: 'Nih Bro' })
+        setLimit(m, db)
+    } catch (e) {
+        console.log(e)
+        m.reply(global.mess.fail)
+    } finally {
+        if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile)
+    }
+}
 			break
 			case 'tohd': case 'remini': case 'hd': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (/image/.test(mime)) {
-					m.react('⏳')
-					let hasil;
-					let media = await naze.downloadAndSaveMediaMessage(qmsg);
-					try {
-						const form = new FormData();
-						form.append('buffer', fs.createReadStream(media), {
-							filename: 'image.jpg',
-							contentType: 'image/jpeg'
-						});
-						hasil = await fetchApi('/tools/remini', form, { stream: true });
-						await m.reply({ image: { url: hasil }, caption: global.mess.done })
-						setLimit(m, db)
-						if (media && fs.existsSync(media)) fs.unlinkSync(media);
-						if (hasil && fs.existsSync(hasil)) fs.unlinkSync(hasil);
-					} catch (e) {
-						if (hasil && fs.existsSync(hasil)) fs.unlinkSync(hasil);
-						let ran = `./database/temp/${getRandom('.jpg')}`;
-						const scaleFactor = isNaN(parseInt(text)) ? 4 : parseInt(text) < 10 ? parseInt(text) : 4;
-						exec(`ffmpeg -i "${media}" -vf "scale=iw*${scaleFactor}:ih*${scaleFactor}:flags=lanczos" -q:v 1 "${ran}"`, async (err, stderr, stdout) => {
-							try {
-								if (err) return m.reply(global.mess.fail)
-								await naze.sendMessage(m.chat, { image: { url: ran }, caption: global.mess.done }, { quoted: m });
-								setLimit(m, db)
-							} catch (e) {
-								console.log(e);
-							} finally {
-								if (ran && fs.existsSync(ran)) fs.unlinkSync(ran)
-								if (media && fs.existsSync(media)) fs.unlinkSync(media) 
-							}
-						});
-					}
-				} else m.reply(`Kirim/Reply Gambar dengan format\nExample: ${prefix + command}`)
-			}
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (/image/.test(mime)) {
+        m.react('⏳')
+        let media = await naze.downloadAndSaveMediaMessage(qmsg);
+        let outputFile = `./database/temp/${getRandom('.jpg')}`;
+        // Gunakan scale factor dari text, default 2 (2x perbesaran)
+        const scaleFactor = isNaN(parseInt(text)) ? 2 : parseInt(text) < 10 ? parseInt(text) : 2;
+        exec(`ffmpeg -i "${media}" -vf "scale=iw*${scaleFactor}:ih*${scaleFactor}:flags=lanczos" -q:v 1 "${outputFile}"`, async (err) => {
+            try {
+                if (err) return m.reply(global.mess.fail)
+                await naze.sendMessage(m.chat, { image: { url: outputFile }, caption: global.mess.done }, { quoted: m });
+                setLimit(m, db)
+            } catch (e) {
+                console.log(e);
+            } finally {
+                if (outputFile && fs.existsSync(outputFile)) fs.unlinkSync(outputFile)
+                if (media && fs.existsSync(media)) fs.unlinkSync(media)
+            }
+        });
+    } else m.reply(`Kirim/Reply Gambar dengan format\nExample: ${prefix + command}`)
+}
 			break
 			case 'dehaze': case 'colorize': case 'colorfull': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (/image/.test(mime)) {
-					let hasil;
-					let media = await naze.downloadAndSaveMediaMessage(qmsg);
-					try {
-						const form = new FormData();
-						form.append('buffer', fs.createReadStream(media), {
-							filename: 'image.jpg',
-							contentType: 'image/jpeg'
-						});
-						hasil = await fetchApi('/tools/recolor', form, { stream: true });
-						await m.reply({ image: { url: hasil }, caption: global.mess.done });
-						setLimit(m, db)
-					} finally {
-						if (hasil && fs.existsSync(hasil)) fs.unlinkSync(hasil);
-						if (media && fs.existsSync(media)) fs.unlinkSync(media);
-					}
-				} else m.reply(`Kirim/Reply Gambar dengan format\nExample: ${prefix + command}`)
-			}
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (/image/.test(mime)) {
+        m.react('⏳')
+        let media = await naze.downloadAndSaveMediaMessage(qmsg);
+        let outputFile = `./database/temp/${getRandom('.jpg')}`;
+        exec(`ffmpeg -i "${media}" -vf "eq=saturation=1.5:brightness=0.1" "${outputFile}"`, async (err) => {
+            try {
+                if (err) return m.reply('⚠️ Gagal memproses gambar. Pastikan ffmpeg terpasang.');
+                await naze.sendMessage(m.chat, { image: { url: outputFile }, caption: '✨ Efek Colorfull (ffmpeg)' }, { quoted: m });
+                setLimit(m, db);
+            } catch (e) {
+                console.log(e);
+                m.reply(global.mess.fail);
+            } finally {
+                if (outputFile && fs.existsSync(outputFile)) fs.unlinkSync(outputFile);
+                if (media && fs.existsSync(media)) fs.unlinkSync(media);
+            }
+        });
+    } else m.reply(`Kirim/Reply Gambar dengan format\nExample: ${prefix + command}`)
+}
 			break
 			case 'hitamkan': case 'toblack': {
 				if (!isLimit) return m.reply(global.mess.limit)
@@ -2427,18 +2443,35 @@ Select Bot Settings:
 			}
 			break
 			case 'ssweb': {
-				if (!isPremium) return m.reply(global.mess.prem)
-				if (!text) return m.reply(`Example: ${prefix + command} https://github.com/nazedev/naze-md`)
-				let anu = 'https://' + text.replace(/^https?:\/\//, '')
-				let hasil;
-				try {
-					hasil = await fetchApi('/tools/ss', { url: anu }, { stream: true });
-					await m.reply({ image: { url: hasil }, caption: global.mess.done });
-					setLimit(m, db)
-				} finally {
-					if (hasil && fs.existsSync(hasil)) fs.unlinkSync(hasil);
-				}
-			}
+    if (!isPremium) return m.reply(global.mess.prem)
+    if (!text) return m.reply(`Example: ${prefix + command} https://github.com/nazedev/naze-md`)
+    let url = text;
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    const path = require('path');
+    const os = require('os');
+    const tmpFile = path.join(os.tmpdir(), `ssweb-${Date.now()}.png`);
+    try {
+        // Gunakan Google PageSpeed API (gratis, tanpa key)
+        const apiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(url)}&screenshot=true`;
+        const response = await fetch(apiUrl);
+        const json = await response.json();
+        
+        // Ambil data base64 screenshot
+        const base64 = json.lighthouseResult?.fullPageScreenshot?.screenshot?.data
+                     || json.lighthouseResult?.audits?.['final-screenshot']?.details?.data;
+        if (!base64) throw new Error('Screenshot tidak tersedia');
+        
+        const buffer = Buffer.from(base64, 'base64');
+        await fs.promises.writeFile(tmpFile, buffer);
+        await m.reply({ image: { url: tmpFile }, caption: global.mess.done });
+        setLimit(m, db);
+    } catch (e) {
+        console.log(e);
+        m.reply(global.mess.fail);
+    } finally {
+        if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile);
+    }
+}
 			break
 			case 'readmore': {
 				let teks1 = text.split`|`[0] ? text.split`|`[0] : ''
@@ -2461,14 +2494,59 @@ Select Bot Settings:
 			}
 			break
 			case 'cuaca': case 'weather': {
-				if (!text) return m.reply(`Example: ${prefix + command} jakarta`)
-				try {
-					let { result: data } = await fetchApi('/tools/cuaca', { city: text });
-					m.reply(`*🏙 Cuaca Kota ${data.name}*\n\n*🌤️ Cuaca :* ${data.weather[0].main}\n*📝 Deskripsi :* ${data.weather[0].description}\n*🌡️ Suhu Rata-rata :* ${data.main.temp} °C\n*🤔 Terasa Seperti :* ${data.main.feels_like} °C\n*🌬️ Tekanan :* ${data.main.pressure} hPa\n*💧 Kelembapan :* ${data.main.humidity}%\n*🌪️ Kecepatan Angin :* ${data.wind.speed} Km/h\n*📍Lokasi :*\n- *Bujur :* ${data.coord.lat}\n- *Lintang :* ${data.coord.lon}\n*🌏 Negara :* ${data.sys.country}`)
-				} catch (e) {
-					m.reply('Kota Tidak Di Temukan!')
-				}
-			}
+    if (!text) return m.reply(`Example: ${prefix + command} jakarta`)
+    try {
+        // 1. Cari koordinat kota pakai Nominatim (gratis, tanpa key)
+        const geoUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&limit=1`
+        const geoRes = await fetch(geoUrl, {
+            headers: { 'User-Agent': 'WhatsAppBot/1.0' } // Nominatim wajib user-agent
+        })
+        const geoData = await geoRes.json()
+        if (!geoData.length) return m.reply('Kota Tidak Di Temukan!')
+        
+        const { lat, lon, display_name } = geoData[0]
+        
+        // 2. Ambil data cuaca pakai Open-Meteo (gratis, tanpa key)
+        const cuacaUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m,pressure_msl`
+        const cuacaRes = await fetch(cuacaUrl)
+        const cuacaData = await cuacaRes.json()
+        
+        const cw = cuacaData.current_weather
+        const hourly = cuacaData.hourly
+        
+        // Konversi kode cuaca WMO ke deskripsi
+        const wmoCode = cw.weathercode
+        const cuacaDesc = {
+            0: 'Cerah', 1: 'Cerah Berawan', 2: 'Berawan', 3: 'Mendung',
+            45: 'Berkabut', 48: 'Berkabut', 51: 'Gerimis Ringan', 53: 'Gerimis', 55: 'Gerimis Lebat',
+            61: 'Hujan Ringan', 63: 'Hujan', 65: 'Hujan Lebat',
+            71: 'Salju Ringan', 73: 'Salju', 75: 'Salju Lebat',
+            95: 'Badai Petir', 96: 'Badai Petir Hujan Es', 99: 'Badai Petir Hujan Es Lebat'
+        }[wmoCode] || 'Tidak diketahui'
+        
+        const cuacaUtama = wmoCode <= 3 ? 'Cerah' : wmoCode < 50 ? 'Berkabut' : wmoCode < 60 ? 'Gerimis' : wmoCode < 70 ? 'Hujan' : wmoCode < 80 ? 'Salju' : 'Badai'
+        
+        // Ambil kelembapan & tekanan dari jam saat ini (perkiraan)
+        const nowHour = new Date().getHours()
+        const humidity = hourly?.relativehumidity_2m?.[nowHour] || 'N/A'
+        const pressure = hourly?.pressure_msl?.[nowHour] || 'N/A'
+        
+        let teks = `*🏙 Cuaca Kota ${display_name.split(',')[0]}*\n\n`
+        teks += `*🌤️ Cuaca :* ${cuacaUtama}\n`
+        teks += `*📝 Deskripsi :* ${cuacaDesc}\n`
+        teks += `*🌡️ Suhu :* ${cw.temperature} °C\n`
+        teks += `*🤔 Kecepatan Angin :* ${cw.windspeed} Km/h\n`
+        teks += `*🌬️ Tekanan :* ${pressure} hPa\n`
+        teks += `*💧 Kelembapan :* ${humidity}%\n`
+        teks += `*📍Lokasi :*\n- *Bujur :* ${lat}\n- *Lintang :* ${lon}\n`
+        teks += `*🌏 Negara :* ${display_name.split(',').pop().trim()}`
+        
+        m.reply(teks)
+    } catch (e) {
+        console.log(e)
+        m.reply('Kota Tidak Di Temukan!')
+    }
+}
 			break
 			case 'sticker': case 'stiker': case 's': case 'stickergif': case 'stikergif': case 'sgif': case 'stickerwm': case 'swm': case 'curi': case 'colong': case 'take': case 'stickergifwm': case 'sgifwm': {
 				if (!/image|video|sticker/.test(quoted.type)) return m.reply(`Kirim/reply gambar/video/gif dengan caption ${prefix + command}\nDurasi Image/Video/Gif 1-9 Detik`)
@@ -2486,39 +2564,58 @@ Select Bot Settings:
 			}
 			break
 			case 'smeme': case 'stickmeme': case 'stikmeme': case 'stickermeme': case 'stikermeme': {
-				//if (!isPremium) return m.reply(global.mess.prem)
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!/image|webp/.test(mime)) return m.reply(`Kirim/reply image/sticker\nDengan caption ${prefix + command} atas|bawah`)
-				if (!text) return m.reply(`Kirim/reply image/sticker dengan caption ${prefix + command} atas|bawah`)
-				m.react('⏳')
-				let atas = text.split`|`[0] ? text.split`|`[0] : '-'
-				let bawah = text.split`|`[1] ? text.split`|`[1] : '-'
-				let media = await naze.downloadAndSaveMediaMessage(qmsg)
-				try {
-					let mem = await UguuSe(media);
-					let smeme = await fetchApi('/create/meme2', { url: mem.url, text: atas, text2: bawah }, { stream: true });
-					await naze.sendAsSticker(m.chat, smeme, m, { packname, author })
-					setLimit(m, db)
-				} catch (e) {
-					console.log(e)
-					m.reply(global.mess.fail)
-				} finally {
-					if (media && fs.existsSync(media)) fs.unlinkSync(media)
-				}
-			}
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!/image|webp/.test(mime)) return m.reply(`Kirim/reply image/sticker\nDengan caption ${prefix + command} atas|bawah`)
+    if (!text) return m.reply(`Kirim/reply image/sticker dengan caption ${prefix + command} atas|bawah`)
+    m.react('⏳')
+    let atas = text.split`|`[0] ? text.split`|`[0] : '-'
+    let bawah = text.split`|`[1] ? text.split`|`[1] : '-'
+    let media = await naze.downloadAndSaveMediaMessage(qmsg)
+    const tmpMeme = `./database/temp/${getRandom('.jpg')}`
+    try {
+        // Upload gambar ke hosting sementara (UguuSe)
+        let mem = await UguuSe(media)
+        if (!mem || !mem.url) throw new Error('Gagal upload gambar')
+        
+        // Panggil Memegen.link API (gratis, tanpa key)
+        const memeUrl = `https://api.memegen.link/images/custom/${encodeURIComponent(atas)}/${encodeURIComponent(bawah)}.jpg?background=${encodeURIComponent(mem.url)}`
+        const res = await fetch(memeUrl)
+        if (!res.ok) throw new Error('Gagal generate meme')
+        const buffer = await res.arrayBuffer()
+        await fs.promises.writeFile(tmpMeme, Buffer.from(buffer))
+        
+        // Kirim sebagai stiker
+        await naze.sendAsSticker(m.chat, tmpMeme, m, { packname, author })
+        setLimit(m, db)
+    } catch (e) {
+        console.log(e)
+        m.reply(global.mess.fail)
+    } finally {
+        if (media && fs.existsSync(media)) fs.unlinkSync(media)
+        if (fs.existsSync(tmpMeme)) fs.unlinkSync(tmpMeme)
+    }
+}
 			break
 			case 'emojimix': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text) return m.reply(`Example: ${prefix + command} 😅+🤔`)
-				let [emoji1, emoji2] = text.split`+`
-				if (!emoji1 && !emoji2) return m.reply(`Example: ${prefix + command} 😅+🤔`)
-				let { result } = await fetchApi('/tools/emojimix', { emoji1, emoji2 });
-				if (result.length < 1) return m.reply(`Mix Emoji ${text} Tidak Ditemukan!`)
-				for (let res of result) {
-					await naze.sendAsSticker(m.chat, res.url, m, { packname, author })
-				}
-				setLimit(m, db)
-			}
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!text) return m.reply(`Example: ${prefix + command} 😅+🤔`)
+    let [emoji1, emoji2] = text.split`+`
+    if (!emoji1 || !emoji2) return m.reply(`Example: ${prefix + command} 😅+🤔`)
+    try {
+        const apiUrl = `https://emojik.vercel.app/s/${encodeURIComponent(emoji1.trim())}_${encodeURIComponent(emoji2.trim())}?size=256`
+        const response = await fetch(apiUrl)
+        if (!response.ok) throw new Error('Kombinasi tidak ditemukan')
+        const buffer = await response.arrayBuffer()
+        const tmpFile = `./database/temp/${getRandom('.webp')}`
+        await fs.promises.writeFile(tmpFile, Buffer.from(buffer))
+        await naze.sendAsSticker(m.chat, tmpFile, m, { packname, author })
+        if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile)
+        setLimit(m, db)
+    } catch (e) {
+        console.log(e)
+        m.reply(`Mix Emoji ${text} Tidak Ditemukan!`)
+    }
+}
 			break
 			case 'iqc': {
 				if (!isLimit) return m.reply(global.mess.limit)
@@ -2763,12 +2860,19 @@ Select Bot Settings:
 			}
 			break
 			case 'tinyurl': case 'shorturl': case 'shortlink': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text || !isUrl(text)) return m.reply(`Example: ${prefix + command} https://github.com/nazedev/hitori`)
-				let hasil = await fetchApi('/other/tinyurl', { url: text });
-				m.reply('Url : ' + hasil.result)
-				setLimit(m, db)
-			}
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!text || !isUrl(text)) return m.reply(`Example: ${prefix + command} https://github.com/nazedev/hitori`)
+    const apiUrl = `https://tinyurl.com/api-create.php?url=${encodeURIComponent(text)}`
+    // Contoh link: https://tinyurl.com/api-create.php?url=https://github.com/nazedev/hitori
+    try {
+        let res = await axios.get(apiUrl)
+        m.reply('Url : ' + res.data)
+        setLimit(m, db)
+    } catch (e) {
+        console.log(e)
+        m.reply(global.mess.fail)
+    }
+}
 			break
 			case 'git': case 'gitclone': {
 				if (!isLimit) return m.reply(global.mess.limit)
@@ -2786,14 +2890,16 @@ Select Bot Settings:
 			
 			// Ai Menu
 			case 'ai': case 'google': case 'bard': case 'gemini': {
-				if (!text) return m.reply(`Example: ${prefix + command} query`)
-				try {
-					let hasil = await fetchApi('/ai/gemini-flash-lite', { query: text });
-					m.reply(hasil.result.text)
-				} catch (e) {
-					m.reply(pickRandom(['Fitur Ai sedang bermasalah!','Tidak dapat terhubung ke ai!','Sistem Ai sedang sibuk sekarang!','Fitur sedang tidak dapat digunakan!']))
-				}
-			}
+    if (!text) return m.reply(`Example: ${prefix + command} query`)
+    const apiUrl = `https://api.akuari.my.id/ai/gemini?query=${encodeURIComponent(text)}`
+    // Contoh link (buka browser): https://api.akuari.my.id/ai/gemini?query=halo
+    try {
+        let res = await axios.get(apiUrl)
+        m.reply(res.data.result)
+    } catch (e) {
+        m.reply(pickRandom(['Fitur Ai sedang bermasalah!','Tidak dapat terhubung ke ai!','Sistem Ai sedang sibuk sekarang!','Fitur sedang tidak dapat digunakan!']))
+    }
+}
 			break
 			case 'archipelago': case 'grok': case 'glm': case 'claude': {
 				if (global.APIKeys[global.APIs.neosantara] === 'API_KEY_NEOSANTARA_AI') return m.reply('Silahkan Ganti Apikey Neosantara Ai!\nDi file settings.js. Example: .setapikey neo key_nya');
@@ -2858,24 +2964,22 @@ Select Bot Settings:
 			}
 			break
 			case 'play': case 'ytplay': case 'yts': case 'ytsearch': case 'youtubesearch': {
-				if (!text) return m.reply(`Example: ${prefix + command} dj komang`)
-				m.react('⏳')
-				try {
-					const res = await yts.search(text);
-					const hasil = pickRandom(res.all)
-					const teksnya = `*📍Title:* ${hasil.title || 'Tidak tersedia'}\n*✏Description:* ${hasil.description || 'Tidak tersedia'}\n*🌟Channel:* ${hasil.author?.name || 'Tidak tersedia'}\n*⏳Duration:* ${hasil.seconds || 'Tidak tersedia'} second (${hasil.timestamp || 'Tidak tersedia'})\n*🔎Source:* ${hasil.url || 'Tidak tersedia'}\n\n_note : jika ingin mendownload silahkan_\n_pilih ${prefix}ytmp3 url_video atau ${prefix}ytmp4 url_video_`;
-					await m.reply({ image: { url: hasil.thumbnail }, caption: teksnya })
-				} catch (e) {
-					try {
-						const res = await fetchApi('/search/youtube', { query: text });
-						const hasil = pickRandom(res.result.items)
-						const teksnya = `*📍Title:* ${hasil.snippet.title || 'Tidak tersedia'}\n*✏Description:* ${hasil.snippet.description || 'Tidak tersedia'}\n*🌟Channel:* ${hasil.snippet.channelTitle || 'Tidak tersedia'}\n*⏳Duration:* ${hasil.duration || 'Tidak tersedia'}\n*🔎Source:* https://youtu.be/${hasil.id.videoId || 'Tidak tersedia'}\n\n_note : jika ingin mendownload silahkan_\n_pilih ${prefix}ytmp3 url_video atau ${prefix}ytmp4 url_video_`;
-						await m.reply({ image: { url: hasil.snippet.thumbnails.medium.url }, caption: teksnya })
-					} catch (e) {
-						m.reply('Post not available!')
-					}
-				}
-			}
+    if (!text) return m.reply(`Example: ${prefix + command} dj komang`)
+    m.react('⏳')
+    const apiUrl = `https://api.popcat.xyz/youtube?query=${encodeURIComponent(text)}`
+    // Contoh link: https://api.popcat.xyz/youtube?query=dj%20komang
+    try {
+        let res = await axios.get(apiUrl)
+        let data = res.data
+        if (!data.status || !data.result || data.result.length === 0) throw new Error('empty')
+        let hasil = pickRandom(data.result)
+        let teksnya = `*📍Title:* ${hasil.title || 'Tidak tersedia'}\n*✏Description:* ${hasil.description || 'Tidak tersedia'}\n*🌟Channel:* ${hasil.channel?.name || 'Tidak tersedia'}\n*⏳Duration:* ${hasil.duration || 'Tidak tersedia'}\n*🔎Source:* ${hasil.url || 'Tidak tersedia'}\n\n_note : jika ingin mendownload silahkan_\n_pilih ${prefix}ytmp3 url_video atau ${prefix}ytmp4 url_video_`
+        await m.reply({ image: { url: hasil.thumbnail }, caption: teksnya })
+    } catch (e) {
+        console.log(e)
+        m.reply('Post not available!')
+    }
+}
 			break
 			case 'pixiv': {
 				if (!isLimit) return m.reply(global.mess.limit)
@@ -2895,18 +2999,23 @@ Select Bot Settings:
 			}
 			break
 			case 'pinterest': case 'pint': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text) return m.reply(`Example: ${prefix + command} hu tao`)
-				try {
-					const res = await fetchApi('/search/pinterest', { query: text });
-					const hasil = pickRandom(res.result)
-					const image = await getBuffer(hasil);
-					await m.reply({ image, caption: 'Hasil dari: ' + text })
-					setLimit(m, db)
-				} catch (e) {
-					m.reply('Pencarian tidak ditemukan!');
-				}
-			}
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!text) return m.reply(`Example: ${prefix + command} hu tao`)
+    try {
+        let apiUrl = `https://api.popcat.xyz/pinterest?q=${encodeURIComponent(text)}`
+        let res = await axios.get(apiUrl)
+        let data = res.data
+        if (data.status && data.result && data.result.length > 0) {
+            let hasil = pickRandom(data.result)
+            let image = await getBuffer(hasil)
+            await m.reply({ image, caption: 'Hasil dari: ' + text })
+            setLimit(m, db)
+        } else throw new Error('empty')
+    } catch (e) {
+        m.reply('Pencarian tidak ditemukan!')
+    }
+}
+// Contoh link: https://api.popcat.xyz/pinterest?q=hu%20tao
 			break
 			case 'wallpaper': {
 				if (!isLimit) return m.reply(global.mess.limit)
@@ -3131,57 +3240,104 @@ Select Bot Settings:
 				}
 			}
 			break
-			case 'tiktok': case 'tiktokdown': case 'ttdown': case 'ttdl': case 'tt': case 'ttmp4': case 'ttvideo': case 'tiktokmp4': case 'tiktokvideo': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text) return m.reply(`Example: ${prefix + command} url_tiktok`)
-				if (!text.includes('tiktok.com')) return m.reply('Url Tidak Mengandung Result Dari Tiktok!')
-				try {
-					const hasil = await fetchApi('/download/tiktok', { url: text })
-					m.react('⏳')
-					if (hasil.result.download.type == "video") {
-						await m.reply({ video: { url: hasil.result.download?.video?.nowm_hd || hasil.result.download?.video?.nowm }, caption: `*📍Title:* ${hasil.result.desc || '-'}\n*🕓Create At:* ${hasil.result.create_time}\n*🎃Author:* ${hasil.result.author.nickname} (@${hasil.result.author.unique_id})` });
-					} else if (hasil.result.download.type == "images") {
-						await naze.sendAlbumMessage(m.chat, {
-							album: hasil.result.download.images.map(a => ({ image: { url: a.url }})),
-							caption: `*📍Title:* ${hasil.result.desc || '-'}\n*🕓Create At:* ${hasil.result.create_time}\n*🎃Author:* ${hasil.result.author.nickname} (@${hasil.result.author.unique_id})`
-						}, { quoted: m });
-					} else {
-						return m.reply('Url Tidak Valid!')
-					}
-					setLimit(m, db)
-				} catch (e) {
-					console.log(e)
-					m.reply(global.mess.fail)
-				}
-			}
+		case 'tiktok': case 'tiktokdown': case 'ttdown': case 'ttdl': case 'tt': case 'ttmp4': case 'ttvideo': case 'tiktokmp4': case 'tiktokvideo': {
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!text) return m.reply(`Example: ${prefix + command} url_tiktok`)
+    if (!text.includes('tiktok.com')) return m.reply('Url Tidak Mengandung Result Dari Tiktok!')
+    m.react('⏳')
+    try {
+        // Pakai tikwm.com (no key, masih aktif)
+        let apiUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(text)}?hd=1`
+        // Contoh link respons web: https://www.tikwm.com/api/?url=https://www.tiktok.com/@giaerra/video/7577398554101058824?hd=1
+        let { data: hasil } = await axios.get(apiUrl)
+        if (hasil.code === 0 && hasil.data) {
+            let { data: res } = hasil
+            if (res.play) {
+                // Tipe video
+                await m.reply({ 
+                    video: { url: res.play }, 
+                    caption: `*📍Title:* ${res.title || '-'}\n*⏱️Duration:* ${res.duration || '-'}s\n*👤Author:* ${res.author?.nickname || '-'} (@${res.author?.unique_id || '-'})`
+                })
+                setLimit(m, db)
+            } else if (res.images && res.images.length > 0) {
+                // Tipe slideshow (jika tikwm mengembalikan images)
+                await naze.sendAlbumMessage(m.chat, {
+                    album: res.images.map(a => ({ image: { url: a } })),
+                    caption: `*📍Title:* ${res.title || res.desc || '-'}\n*👤Author:* ${res.author?.nickname || '-'} (@${res.author?.unique_id || '-'})`
+                }, { quoted: m })
+                setLimit(m, db)
+            } else {
+                throw new Error('Unsupported type')
+            }
+        } else {
+            throw new Error('API error')
+        }
+    } catch (e) {
+        console.log('tikwm gagal, fallback ke tiktok-api-dl')
+        try {
+            // Fallback ke library @tobyg74/tiktok-api-dl (no key)
+            const { TiktokDL } = require('@tobyg74/tiktok-api-dl')
+            const result = await TiktokDL(text, { version: 'v1' })
+            if (result.status === 'success') {
+                if (result.result.type === 'video') {
+                    await m.reply({
+                        video: { url: result.result.video[0] },
+                        caption: `*📍Title:* ${result.result.description || '-'}\n*👤Author:* ${result.result.author?.nickname || '-'} (@${result.result.author?.username || '-'})`
+                    })
+                } else if (result.result.type === 'image') {
+                    await naze.sendAlbumMessage(m.chat, {
+                        album: result.result.images.map(a => ({ image: { url: a } })),
+                        caption: `*📍Title:* ${result.result.description || '-'}\n*👤Author:* ${result.result.author?.nickname || '-'} (@${result.result.author?.username || '-'})`
+                    }, { quoted: m })
+                }
+                setLimit(m, db)
+            } else {
+                throw new Error('Library fallback fail')
+            }
+        } catch (e2) {
+            console.log(e2)
+            m.reply(global.mess.fail)
+        }
+    }
+}
 			break
-			case 'ttmp3': case 'tiktokmp3': case 'ttaudio': case 'tiktokaudio': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text) return m.reply(`Example: ${prefix + command} url_tiktok`)
-				if (!text.includes('tiktok.com')) return m.reply('Url Tidak Mengandung Result Dari Tiktok!')
-				try {
-					const hasil = await fetchApi('/download/tiktok', { url: text });
-					m.react('⏳')
-					await m.reply({
-						audio: { url: hasil.result.download.music },
-						mimetype: 'audio/mpeg',
-						contextInfo: {
-							externalAdReply: {
-								title: 'TikTok • ' + hasil.result.author.nickname,
-								body: hasil.result.statistics.like + ' suka, ' + hasil.result.statistics.command + ' komentar. ' + hasil.result.desc,
-								previewType: 'PHOTO',
-								thumbnailUrl: hasil.result.download?.music_info?.cover_hd || hasil.result.download.music_info.cover_medium,
-								mediaType: 1,
-								renderLargerThumbnail: true,
-								sourceUrl: text
-							}
-						}
-					})
-					setLimit(m, db)
-				} catch (e) {
-					m.reply(global.mess.fail)
-				}
-			}
+		case 'ttmp3': case 'tiktokmp3': case 'ttaudio': case 'tiktokaudio': {
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!text) return m.reply(`Example: ${prefix + command} url_tiktok`)
+    if (!text.includes('tiktok.com')) return m.reply('Url Tidak Mengandung Result Dari Tiktok!')
+    m.react('⏳')
+    try {
+        let apiUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(text)}?hd=1`
+        let { data: hasil } = await axios.get(apiUrl)
+        if (hasil.code === 0 && hasil.data) {
+            let musicUrl = hasil.data.music
+            let musicInfo = hasil.data.music_info
+            let title = musicInfo?.title || 'TikTok Audio'
+            let coverUrl = hasil.data.cover || ''
+            await m.reply({
+                audio: { url: musicUrl },
+                mimetype: 'audio/mpeg',
+                contextInfo: {
+                    externalAdReply: {
+                        title: title,
+                        body: hasil.data.title || '',
+                        previewType: 'PHOTO',
+                        thumbnailUrl: coverUrl,
+                        mediaType: 1,
+                        renderLargerThumbnail: true,
+                        sourceUrl: text
+                    }
+                }
+            })
+            setLimit(m, db)
+        } else {
+            throw new Error('Gagal mengambil data')
+        }
+    } catch (e) {
+        console.log(e)
+        m.reply(global.mess.fail)
+    }
+}
 			break
 			case 'fb': case 'fbdl': case 'fbdown': case 'facebook': case 'facebookdl': case 'facebookdown': case 'fbdownload': case 'fbmp4': case 'fbvideo': {
 				if (!isLimit) return m.reply(global.mess.limit)
