@@ -2964,22 +2964,24 @@ Select Bot Settings:
 			}
 			break
 			case 'play': case 'ytplay': case 'yts': case 'ytsearch': case 'youtubesearch': {
-    if (!text) return m.reply(`Example: ${prefix + command} dj komang`)
-    m.react('⏳')
-    const apiUrl = `https://api.popcat.xyz/youtube?query=${encodeURIComponent(text)}`
-    // Contoh link: https://api.popcat.xyz/youtube?query=dj%20komang
-    try {
-        let res = await axios.get(apiUrl)
-        let data = res.data
-        if (!data.status || !data.result || data.result.length === 0) throw new Error('empty')
-        let hasil = pickRandom(data.result)
-        let teksnya = `*📍Title:* ${hasil.title || 'Tidak tersedia'}\n*✏Description:* ${hasil.description || 'Tidak tersedia'}\n*🌟Channel:* ${hasil.channel?.name || 'Tidak tersedia'}\n*⏳Duration:* ${hasil.duration || 'Tidak tersedia'}\n*🔎Source:* ${hasil.url || 'Tidak tersedia'}\n\n_note : jika ingin mendownload silahkan_\n_pilih ${prefix}ytmp3 url_video atau ${prefix}ytmp4 url_video_`
-        await m.reply({ image: { url: hasil.thumbnail }, caption: teksnya })
-    } catch (e) {
-        console.log(e)
-        m.reply('Post not available!')
-    }
-}
+				if (!text) return m.reply(`Example: ${prefix + command} dj komang`)
+				m.react('⏳')
+				try {
+					const res = await yts.search(text);
+					const hasil = pickRandom(res.all)
+					const teksnya = `*📍Title:* ${hasil.title || 'Tidak tersedia'}\n*✏Description:* ${hasil.description || 'Tidak tersedia'}\n*🌟Channel:* ${hasil.author?.name || 'Tidak tersedia'}\n*⏳Duration:* ${hasil.seconds || 'Tidak tersedia'} second (${hasil.timestamp || 'Tidak tersedia'})\n*🔎Source:* ${hasil.url || 'Tidak tersedia'}\n\n_note : jika ingin mendownload silahkan_\n_pilih ${prefix}ytmp3 url_video atau ${prefix}ytmp4 url_video_`;
+					await m.reply({ image: { url: hasil.thumbnail }, caption: teksnya })
+				} catch (e) {
+					try {
+						const res = await fetchApi('/search/youtube', { query: text });
+						const hasil = pickRandom(res.result.items)
+						const teksnya = `*📍Title:* ${hasil.snippet.title || 'Tidak tersedia'}\n*✏Description:* ${hasil.snippet.description || 'Tidak tersedia'}\n*🌟Channel:* ${hasil.snippet.channelTitle || 'Tidak tersedia'}\n*⏳Duration:* ${hasil.duration || 'Tidak tersedia'}\n*🔎Source:* https://youtu.be/${hasil.id.videoId || 'Tidak tersedia'}\n\n_note : jika ingin mendownload silahkan_\n_pilih ${prefix}ytmp3 url_video atau ${prefix}ytmp4 url_video_`;
+						await m.reply({ image: { url: hasil.snippet.thumbnails.medium.url }, caption: teksnya })
+					} catch (e) {
+						m.reply('Post not available!')
+					}
+				}
+			}
 			break
 			case 'pixiv': {
 				if (!isLimit) return m.reply(global.mess.limit)
@@ -2999,23 +3001,18 @@ Select Bot Settings:
 			}
 			break
 			case 'pinterest': case 'pint': {
-    if (!isLimit) return m.reply(global.mess.limit)
-    if (!text) return m.reply(`Example: ${prefix + command} hu tao`)
-    try {
-        let apiUrl = `https://api.popcat.xyz/pinterest?q=${encodeURIComponent(text)}`
-        let res = await axios.get(apiUrl)
-        let data = res.data
-        if (data.status && data.result && data.result.length > 0) {
-            let hasil = pickRandom(data.result)
-            let image = await getBuffer(hasil)
-            await m.reply({ image, caption: 'Hasil dari: ' + text })
-            setLimit(m, db)
-        } else throw new Error('empty')
-    } catch (e) {
-        m.reply('Pencarian tidak ditemukan!')
-    }
-}
-// Contoh link: https://api.popcat.xyz/pinterest?q=hu%20tao
+				if (!isLimit) return m.reply(global.mess.limit)
+				if (!text) return m.reply(`Example: ${prefix + command} hu tao`)
+				try {
+					const res = await fetchApi('/search/pinterest', { query: text });
+					const hasil = pickRandom(res.result)
+					const image = await getBuffer(hasil);
+					await m.reply({ image, caption: 'Hasil dari: ' + text })
+					setLimit(m, db)
+				} catch (e) {
+					m.reply('Pencarian tidak ditemukan!');
+				}
+			}
 			break
 			case 'wallpaper': {
 				if (!isLimit) return m.reply(global.mess.limit)
