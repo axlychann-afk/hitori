@@ -2712,25 +2712,25 @@ Select Bot Settings:
 			}
 			break
 			case 'brat': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text && (!m.quoted || !m.quoted.text)) return m.reply(`Kirim/reply pesan *${prefix + command}* Teksnya`)
-				let queryText = text ? text : m.quoted.text;
-				if (queryText.length >= 200) return m.reply('Max 200 Length!')
-				try {
-					let res = await fetchApi('/create/brat', { text: queryText }, { stream: true });
-					await naze.sendAsSticker(m.chat, res, m)
-					setLimit(m, db)
-				} catch (e) {
-					try {
-						let res = await fetchApi('/create/brat3', { text: queryText }, { stream: true });
-						await naze.sendAsSticker(m.chat, res, m)
-						setLimit(m, db)
-					} catch (e) {
-						console.log(e)
-						m.reply(global.mess.fail)
-					}
-				}
-			}
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!text && (!m.quoted || !m.quoted.text)) return m.reply(`Kirim/reply pesan *${prefix + command}* Teksnya`)
+    let queryText = text ? text : m.quoted.text;
+    if (queryText.length >= 200) return m.reply('Max 200 Length!')
+    m.react('⏳')
+    
+    try {
+        const apiUrl = `https://brat.siputzx.my.id/image?text=${encodeURIComponent(queryText)}&background=%23ffffff&color=%23000000&emojiStyle=apple`
+        const response = await axios.get(apiUrl, { responseType: 'arraybuffer' })
+        const imageBuffer = Buffer.from(response.data, 'binary')
+        
+        await naze.sendAsSticker(m.chat, imageBuffer, m, { packname, author })
+        setLimit(m, db)
+    } catch (e) {
+        console.log(e)
+        m.reply(global.mess.fail)
+    }
+}
+break
 			break
 			case 'bratvid': case 'bratvideo': {
 				if (!isLimit) return m.reply(global.mess.limit)
@@ -3017,18 +3017,30 @@ Select Bot Settings:
 			}
 			break
 			case 'pinterest': case 'pint': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text) return m.reply(`Example: ${prefix + command} hu tao`)
-				try {
-					const res = await fetchApi('/search/pinterest', { query: text });
-					const hasil = pickRandom(res.result)
-					const image = await getBuffer(hasil);
-					await m.reply({ image, caption: 'Hasil dari: ' + text })
-					setLimit(m, db)
-				} catch (e) {
-					m.reply('Pencarian tidak ditemukan!');
-				}
-			}
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!text) return m.reply(`Example: ${prefix + command} hu tao`)
+    m.react('⏳')
+    try {
+        // API endpoint baru
+        const apiUrl = `https://api.nexray.web.id/search/pinterest?q=${encodeURIComponent(text)}`
+        const { data } = await axios.get(apiUrl) // <-- Response langsung ada di data
+        
+        // Cek status dan result
+        if (!data.status || !data.result || data.result.length === 0) throw new Error('empty')
+        
+        // Pilih 1 gambar secara random dari hasil pencarian
+        const randomIndex = Math.floor(Math.random() * data.result.length)
+        const imageUrl = data.result[randomIndex].images_url
+        
+        // Kirim gambar
+        await m.reply({ image: { url: imageUrl }, caption: `Hasil dari: ${text}` })
+        setLimit(m, db)
+    } catch (e) {
+        console.log(e)
+        m.reply('Pencarian tidak ditemukan atau API error!')
+    }
+}
+break
 			break
 			case 'wallpaper': {
 				if (!isLimit) return m.reply(global.mess.limit)
@@ -4455,7 +4467,7 @@ Select Bot Settings:
 ├ *Money* : ${db.users[m.sender] ? db.users[m.sender].money.toLocaleString('id-ID') : '0'}
 ╰─┬────❍
 ╭─┴─❍「 *BOT INFO* 」❍
-├ *Nama Bot* : ${set?.botname || 'Naze Bot'}
+├ *Nama Bot* : ${set?.botname || 'Axly Bot'}
 ├ *Powered* : @${'0@s.whatsapp.net'.split('@')[0]}
 ├ *Owner* : @${ownerNumber[0].split('@')[0]}
 ├ *Mode* : ${naze.public ? 'Public' : 'Self'}
