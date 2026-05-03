@@ -13,8 +13,8 @@ const __filename = fileURLToPath(import.meta.url);
 //~~~~~~~~~~~~< GLOBAL SETTINGS >~~~~~~~~~~~~\\
 
 global.owner = ['6282191240883'] // ['628','628'] 2 owner atau lebih
-global.author = 'Nazedev'
-global.botname = 'Hitori Bot'
+global.author = '~'
+global.botname = 'Axly Bot'
 global.packname = 'Bot WhatsApp'
 global.timezone = 'Asia/Jakarta' // Ganti pakai command .settimezone
 global.locale = 'en' // Ganti pakai command .setlocale
@@ -35,21 +35,20 @@ global.fake = {
 }
 
 global.my = {
-	yt: 'https://youtube.com/c/Nazedev',
-	gh: 'https://github.com/nazedev',
-	gc: 'https://chat.whatsapp.com/DPUC3uuqYZI9FNLdgtMp4n?mode=gi_t',
-	ch: '120363250409960161@newsletter',
+	yt: '~',
+	gh: '~',
+	ch: '~',
 }
 
 global.limit = {
-	free: 20,
-	premium: 999,
-	vip: 900
+	free: 67,
+	premium: 6767,
+	vip: 677
 }
 
 global.money = {
-	free: 10000,
-	premium: 1000000,
+	free: 167676,
+	premium: 167676767,
 	vip: 10000000
 }
 
@@ -77,7 +76,7 @@ global.APIs = {
 	neosantara: 'https://api.neosantara.xyz/v1',
 }
 global.APIKeys = {
-	'https://api.naze.biz.id': 'YOUR_API_KEY',
+	'https://api.naze.biz.id': 'nz-8535247f29',
 	'https://api.neosantara.xyz/v1': 'API_KEY_NEOSANTARA_AI',
 }
 
