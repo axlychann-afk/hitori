@@ -3092,35 +3092,60 @@ break
     if (!text.includes('instagram.com')) return m.reply('Url Tidak Mengandung Result Dari Instagram!')
     m.react('⏳')
     try {
-        // 🔥 Panggil require di sini (pastikan Anda sudah createRequire di atas)
-        const { igdl } = require('./lib/igdl.js');
-        const result = await igdl(text)
+        // 🔥 URL API Baru
+        let apiUrl = `https://api.nexray.eu.cc/downloader/v2/instagram?url=${encodeURIComponent(text)}`
+        let { data } = await axios.get(apiUrl)
 
-        if (result.status && result.result && result.result.downloadUrl && result.result.downloadUrl.length > 0) {
-            const urls = result.result.downloadUrl
-            const caption = `✅ *Download Berhasil*\n📁 Source: ${result.source || 'igdl'}`
-            if (urls.length > 1) {
-                const album = urls.map(url => {
-                    const isVideo = url.includes('.mp4') || url.includes('/video/') || /\.(mp4|m3u8)/i.test(url)
-                    return isVideo ? { video: { url } } : { image: { url } }
-                })
-                if (typeof naze.sendAlbumMessage === 'function') {
-                    await naze.sendAlbumMessage(m.chat, { album, caption }, { quoted: m })
-                } else {
-                    for (let url of urls) {
-                        const isVideo = url.includes('.mp4') || url.includes('/video/') || /\.(mp4|m3u8)/i.test(url)
-                        if (isVideo) await m.reply({ video: { url }, caption })
-                        else await m.reply({ image: { url }, caption })
-                        await sleep(1000)
+        // ✅ Struktur respons yang benar: cek status, lalu ambil dari data.result
+        if (data && data.status && data.result) {
+            const medias = data.result
+            const caption = data.caption || '✅ Download Berhasil'
+
+            // Jika hasilnya berupa array (bisa lebih dari 1 media)
+            if (Array.isArray(medias) && medias.length > 0) {
+                // Jika hanya 1 media, kirim langsung
+                if (medias.length === 1) {
+                    const media = medias[0]
+                    const mediaUrl = media.url || media.link
+                    if (media.type === 'video') {
+                        await m.reply({ video: { url: mediaUrl }, caption: caption })
+                    } else {
+                        await m.reply({ image: { url: mediaUrl }, caption: caption })
+                    }
+                } 
+                // Jika lebih dari 1 media, coba kirim sebagai album
+                else {
+                    const album = medias.map(media => {
+                        const mediaUrl = media.url || media.link
+                        return media.type === 'video' ? { video: { url: mediaUrl } } : { image: { url: mediaUrl } }
+                    })
+                    // Cek apakah fungsi sendAlbumMessage tersedia
+                    if (typeof naze.sendAlbumMessage === 'function') {
+                        await naze.sendAlbumMessage(m.chat, { album: album, caption: caption }, { quoted: m })
+                    } else {
+                        // Fallback jika sendAlbumMessage tidak ada: kirim satu per satu
+                        for (let media of medias) {
+                            const mediaUrl = media.url || media.link
+                            if (media.type === 'video') {
+                                await m.reply({ video: { url: mediaUrl }, caption: caption })
+                            } else {
+                                await m.reply({ image: { url: mediaUrl }, caption: caption })
+                            }
+                            await sleep(1000) // jeda 1 detik biar ga ke-spam
+                        }
                     }
                 }
+                setLimit(m, db)
             } else {
-                const url = urls[0]
-                const isVideo = url.includes('.mp4') || url.includes('/video/') || /\.(mp4|m3u8)/i.test(url)
-                if (isVideo) await m.reply({ video: { url }, caption })
-                else await m.reply({ image: { url }, caption })
+                // Jika data.result bukan array atau kosong (misal response untuk single media)
+                const mediaUrl = medias.url || medias.link
+                if (medias.type === 'video') {
+                    await m.reply({ video: { url: mediaUrl }, caption: caption })
+                } else {
+                    await m.reply({ image: { url: mediaUrl }, caption: caption })
+                }
+                setLimit(m, db)
             }
-            setLimit(m, db)
         } else {
             m.reply('Gagal mengambil media. Pastikan URL benar dan postingan tidak private.')
         }
