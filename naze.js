@@ -2419,28 +2419,7 @@ Select Bot Settings:
         });
     } else m.reply(`Kirim/Reply Gambar dengan format\nExample: ${prefix + command}`)
 }
-			break
-			case 'hitamkan': case 'toblack': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (/image/.test(mime)) {
-					let hasil;
-					let media = await naze.downloadAndSaveMediaMessage(qmsg);
-					try {
-						const form = new FormData();
-						form.append('style', 'superblack');
-					    form.append('buffer', fs.createReadStream(media), {
-							filename: 'image.jpg',
-							contentType: 'image/jpeg'
-						});
-						hasil = await fetchApi('/create/skin-tone', form, { stream: true });
-						await m.reply({ image: { url: hasil }, caption: global.mess.done });
-						setLimit(m, db)
-					} finally {
-						if (hasil && fs.existsSync(hasil)) fs.unlinkSync(hasil);
-						if (media && fs.existsSync(media)) fs.unlinkSync(media)
-					}
-				} else m.reply(`Kirim/Reply Gambar dengan format\nExample: ${prefix + command}`)
-			}
+			
 			break
 			case 'ssweb': {
     if (!isPremium) return m.reply(global.mess.prem)
@@ -2779,50 +2758,7 @@ break
 }
 break;
 			break
-			case 'wasted': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (/jpg|jpeg|png/.test(mime)) {
-					m.react('⏳')
-					let hasil;
-					let media = await naze.downloadAndSaveMediaMessage(qmsg);
-					try {
-						const form = new FormData();
-					    form.append('buffer', fs.createReadStream(media), {
-							filename: 'image.jpg',
-							contentType: 'image/jpeg'
-						});
-						hasil = await fetchApi('/create/wasted', form, { stream: true });
-						await naze.sendMedia(m.chat, hasil, '', 'Nih Bro', m);
-						setLimit(m, db)
-					} finally {
-						if (hasil && fs.existsSync(hasil)) fs.unlinkSync(hasil);
-						if (media && fs.existsSync(media)) fs.unlinkSync(media);
-					}
-				} else m.reply(global.mess.media)
-			}
-			break
-			case 'trigger': case 'triggered': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (/jpg|jpeg|png/.test(mime)) {
-					m.react('⏳')
-					let hasil;
-					let media = await naze.downloadAndSaveMediaMessage(qmsg);
-					try {
-						const form = new FormData();
-					    form.append('buffer', fs.createReadStream(media), {
-							filename: 'image.jpg',
-							contentType: 'image/jpeg'
-						});
-						hasil = await fetchApi('/create/triggered', form, { stream: true });
-						await naze.sendMedia(m.chat, hasil, '', global.mess.done, m);
-						setLimit(m, db)
-					} finally {
-						if (hasil && fs.existsSync(hasil)) fs.unlinkSync(hasil);
-						if (media && fs.existsSync(media)) fs.unlinkSync(media);
-					}
-				} else m.reply(global.mess.media)
-			}
-			break
+		
 			case 'nuliskanan': case 'nuliskiri': case 'foliokanan': case 'foliokiri': {
     if (!isLimit) return m.reply(global.mess.limit)
     if (!text) return m.reply(`Kirim perintah *${prefix + command}* Teksnya`)
@@ -2937,30 +2873,6 @@ break;
     }
 }
 			break
-			case 'archipelago': case 'grok': case 'glm': case 'claude': {
-				if (global.APIKeys[global.APIs.neosantara] === 'API_KEY_NEOSANTARA_AI') return m.reply('Silahkan Ganti Apikey Neosantara Ai!\nDi file settings.js. Example: .setapikey neo key_nya');
-				if (!text) return m.reply('Halo! Ada yang bisa dibantu hari ini?')
-				try {
-					let model;
-					if (command == 'glm') model = 'glm-4.7-flash'
-					if (command == 'claude') model = 'claude-3-haiku'
-					if (command == 'archipelago') model = 'archipelago-70b'
-					if (command == 'grok') model = 'grok-4.1-fast-non-reasoning'
-					
-					const response = await fetchApi('/chat/completions', {
-						model, messages: [{ role: 'user', content: text }]
-					}, {
-						api: 2, method: 'POST',
-						headers: {
-							'Authorization': `Bearer ${global.APIKeys[global.APIs.neosantara]}`
-						}
-					});
-					await m.reply(response.choices[0].message.content);
-				} catch (e) {
-					m.reply('Waduh, ada kendala pas nanya ke Neosantara nih.');
-				}
-			}
-			break
 			case 'deepseek': case 'r1': {
     if (!isLimit) return m.reply(global.mess.limit)
     if (!text) return m.reply('Halo! Ada yang bisa dibantu hari ini?')
@@ -3028,23 +2940,8 @@ break
         m.reply('Gagal mencari video, coba kata kunci lain!')
     }
 }
-			break
-			case 'pixiv': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text) return m.reply(`Example: ${prefix + command} hu tao`)
-				try {
-					m.react('⏳')
-					const res = await fetchApi('/search/pixiv', { query: text });
-					let hasil = pickRandom(res.result.body.illusts);
-					const response = await fetch(hasil.url, { headers: { 'referer': 'https://www.pixiv.net' }});
-					const image = await response.buffer();
-					m.reply({ image, caption: `Title: ${hasil.title}\nDescription: ${hasil.alt}\nTags:\n${hasil.tags.map(a => '- ' + a).join('\n')}` });
-					setLimit(m, db)
-				} catch (e) {
-					console.log(e)
-					m.reply('Post not available!')
-				}
-			}
+			
+			
 			break
 			case 'pinterest': case 'pint': {
     if (!isLimit) return m.reply(global.mess.limit)
@@ -3070,82 +2967,6 @@ break
         m.reply('Pencarian tidak ditemukan atau API error!')
     }
 }
-break
-			break
-			case 'wallpaper': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text) return m.reply(`Example: ${prefix + command} hu tao`)
-				try {
-					let anu = await fetchApi('/search/pinterest', { query: text });
-					if (anu.length < 1) {
-						m.reply('Post not available!');
-					} else {
-						let result = pickRandom(anu.result)
-						await m.reply({ image: { url: result.urls.original }, caption: `*Media Url :* ${result.pin}${result.description ? '\n*Description :* ' + result.description : ''}` })
-						setLimit(m, db)
-					}
-				} catch (e) {
-					m.reply('Server wallpaper sedang offline!')
-				}
-			}
-			break
-			case 'ringtone': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text) return m.reply(`Example: ${prefix + command} black rover`)
-				try {
-					let anu = await fetchApi('/search/meloboom', { query: text });
-					let result = pickRandom(anu.result.data)
-					await m.reply({ audio: { url: anu.result.populated.media[result.media.audio[0]].url }, fileName: result.slug + '.mp3', mimetype: 'audio/mpeg' })
-					setLimit(m, db)
-				} catch (e) {
-					m.reply('Audio tidak ditemukan!')
-				}
-			}
-			break
-			case 'npm': case 'npmjs': {
-				if (!text) return m.reply(`Example: ${prefix + command} axios`)
-				try {
-					let anu = await fetchApi('/search/npm', { query: text });
-					if (anu.result.objects.length > 1) return m.reply('Pencarian Tidak di temukan')
-					let txt = anu.result.objects.map(({ package: pkg }) => {
-						return `*${pkg.name}* (v${pkg.version})\n_${pkg.links.npm}_\n_${pkg.description}_`
-					}).join`\n\n`
-					m.reply(txt)
-				} catch (e) {
-					m.reply('Pencarian Tidak di temukan')
-				}
-			}
-			break
-			case 'style': {
-				if (!text) return m.reply(`Example: ${prefix + command} Naze`)
-				let anu = await fetchApi('/tools/styletext', { text });
-				let txt = anu.result.map(a => `*${a.name}*\n${a.result}`).join`\n\n`
-				m.reply(txt)
-			}
-			break
-			case 'spotify': case 'spotifysearch': {
-				if (!text) return m.reply(`Example: ${prefix + command} alan walker alone`)
-				try {
-					let hasil = await fetchApi('/search/spotify', { query: text });
-					let txt = hasil.result.map(a => {
-						return `*Title : ${a.title}*\n- Artist : ${a.artist}\n- Url : ${a.url}`
-					}).join`\n\n`
-					m.reply(txt)
-				} catch (e) {
-					m.reply('Hasil Tidak Ditemukan!')
-				}
-			}
-			break
-			case 'tenor': {
-				if (!text) return m.reply(`Example: ${prefix + command} alone`)
-				try {
-					const anu = await fetchApi('/search/tenor', { query: text });
-					const hasil = pickRandom(anu.result)
-					await m.reply({ video: { url: hasil.media[0].mp4.url }, caption: `👀 *Media:* ${hasil.url}\n📋 *Description:* ${hasil.content_description}\n🔛 *Url:* ${hasil.itemurl}`, gifPlayback: true, gifAttribution: 2 })
-				} catch (e) {
-					m.reply('Hasil Tidak Ditemukan!')
-				}
-			}
 			break
 			case 'urban': {
 				if (!text) return m.reply(`Example: ${prefix + command} alone`)
@@ -3196,53 +3017,102 @@ break
 			
 			// Downloader Menu
 			case 'ytmp3': case 'ytaudio': case 'ytplayaudio': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text) return m.reply(`Example: ${prefix + command} url_youtube`)
-				if (!text.includes('youtu')) return m.reply('Url Tidak Mengandung Result Dari Youtube!')
-				m.react('⏳')
-				try {
-					const hasil = await ytMp3(text);
-					await m.reply({
-						audio: { url: hasil.result },
-						mimetype: 'audio/mpeg',
-						contextInfo: {
-							externalAdReply: {
-								title: hasil.title,
-								body: hasil.channel,
-								previewType: 'PHOTO',
-								thumbnailUrl: hasil.thumb,
-								mediaType: 1,
-								renderLargerThumbnail: true,
-								sourceUrl: text
-							}
-						}
-					})
-					setLimit(m, db)
-				} catch (e) {
-					try {
-						const { result: hasil } = await fetchApi('/download/youtube', { url: text });
-						await m.reply({
-							audio: { url: hasil.download },
-							mimetype: 'audio/mpeg',
-							contextInfo: {
-								externalAdReply: {
-									title: hasil.title,
-									body: hasil.quality,
-									previewType: 'PHOTO',
-									thumbnailUrl: hasil.thumbnail,
-									mediaType: 1,
-									renderLargerThumbnail: true,
-									sourceUrl: text
-								}
-							}
-						})
-						setLimit(m, db)
-					} catch (e) {
-						m.reply(global.mess.fail);
-					}
-				}
-			}
-			break
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!text) return m.reply(`Example: ${prefix + command} url_youtube`)
+    if (!text.includes('youtu')) return m.reply('Url Tidak Mengandung Result Dari Youtube!')
+    m.react('⏳')
+    
+    const apikey = 'bagahapi-NBLj2AcxLjKWIWF9' // Ganti dengan API key valid kamu
+    
+    try {
+        const response = await axios({
+            method: 'GET',
+            url: 'https://api.bagahproject.com/api/ytmp3',
+            params: {
+                apikey: apikey,
+                url: text,
+                bitrate: 128
+            },
+            headers: {
+                'x-api-key': apikey
+            }
+        })
+        
+        const data = response.data
+        
+        // Sesuaikan path ini dengan struktur response asli API
+        // (perlu dicek saat API sudah merespon 200)
+        const audioUrl = data.result?.url || data.url || data.download
+        
+        if (!audioUrl) throw new Error('Audio URL not found')
+        
+        await m.reply({
+            audio: { url: audioUrl },
+            mimetype: 'audio/mpeg',
+            contextInfo: {
+                externalAdReply: {
+                    title: data.result?.title || data.title || 'Youtube Audio',
+                    body: data.result?.channel || data.channel || 'Downloaded by Bot',
+                    previewType: 'PHOTO',
+                    thumbnailUrl: data.result?.thumbnail || data.thumbnail || '',
+                    mediaType: 1,
+                    renderLargerThumbnail: true,
+                    sourceUrl: text
+                }
+            }
+        })
+        setLimit(m, db)
+        
+    } catch (e) {
+        console.error('API Bagahproject error:', e.response?.status, e.response?.data || e.message)
+        
+        // FALLBACK 1: ytMp3
+        try {
+            const hasil = await ytMp3(text);
+            await m.reply({
+                audio: { url: hasil.result },
+                mimetype: 'audio/mpeg',
+                contextInfo: {
+                    externalAdReply: {
+                        title: hasil.title,
+                        body: hasil.channel,
+                        previewType: 'PHOTO',
+                        thumbnailUrl: hasil.thumb,
+                        mediaType: 1,
+                        renderLargerThumbnail: true,
+                        sourceUrl: text
+                    }
+                }
+            })
+            setLimit(m, db)
+        } catch (e2) {
+            // FALLBACK 2: fetchApi
+            try {
+                const { result: hasil } = await fetchApi('/download/youtube', { url: text });
+                await m.reply({
+                    audio: { url: hasil.download },
+                    mimetype: 'audio/mpeg',
+                    contextInfo: {
+                        externalAdReply: {
+                            title: hasil.title,
+                            body: hasil.quality,
+                            previewType: 'PHOTO',
+                            thumbnailUrl: hasil.thumbnail,
+                            mediaType: 1,
+                            renderLargerThumbnail: true,
+                            sourceUrl: text
+                        }
+                    }
+                })
+                setLimit(m, db)
+            } catch (e3) {
+                console.error(e3)
+                m.reply(global.mess.fail)
+            }
+        }
+    }
+}
+break
 			case 'ytmp4': case 'ytvideo': case 'ytplayvideo': {
 				if (!isLimit) return m.reply(global.mess.limit)
 				if (!text) return m.reply(`Example: ${prefix + command} url_youtube`)
@@ -3455,54 +3325,8 @@ break
 			}
 			break
 			
-			// Quotes Menu
-			case 'motivasi': {
-				const hasil = await fetchApi('/random/motivasi');
-				m.reply(hasil.result)
-			}
-			break
-			case 'bijak': {
-				const hasil = await fetchApi('/random/bijak');
-				m.reply(hasil.result)
-			}
-			break
-			case 'dare': {
-				const hasil = await fetchApi('/random/dare');
-				m.reply(hasil.result)
-			}
-			break
-			case 'quotes': {
-				const { result: hasil } = await fetchApi('/random/quotes');
-				m.reply(`_${hasil.quotes}_\n\n*- ${hasil.author}*`)
-			}
-			break
-			case 'truth': {
-				const hasil = await fetchApi('/random/truth');
-				m.reply(`_${hasil.result}_`)
-			}
-			break
-			case 'renungan': {
-				const hasil = await fetchApi('/random/renungan');
-				m.reply('', {
-					contextInfo: {
-						forwardingScore: 10,
-						isForwarded: true,
-						externalAdReply: {
-							title: (m.pushName || 'Anonim'),
-							thumbnailUrl: hasil.result,
-							mediaType: 1,
-							previewType: 'PHOTO',
-							renderLargerThumbnail: true,
-						}
-					}
-				});
-			}
-			break
-			case 'bucin': {
-				const hasil = await fetchApi('/random/bucin');
-				m.reply(hasil.result)
-			}
-			break
+		
+			
 			
 			// Random Menu
 			case 'coffe': case 'kopi': {
@@ -4002,21 +3826,7 @@ break
         m.reply('Gagal mengambil soal caklontong, coba lagi nanti.')
     }
 }
-			break
-			case 'tebaknegara': {
-				if (iGame(tebaknegara, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
-				const { result: hasil } = await fetchApi('/games/tebaknegara');
-				let { key } = await m.reply(`🎮 Tebak Negara Dari Tempat Berikut :\n\n*Tempat : ${hasil.tempat}*\n\nWaktu : 60s\nHadiah *+3499*`)
-				tebaknegara[m.chat + key.id] = {
-					jawaban: hasil.negara.toLowerCase(),
-					id: key.id
-				}
-				await sleep(60000)
-				if (rdGame(tebaknegara, m.chat, key.id)) {
-					m.reply('Waktu Habis\nJawaban: ' + tebaknegara[m.chat + key.id].jawaban)
-					delete tebaknegara[m.chat + key.id]
-				}
-			}
+			
 			break
 			case 'tebakgambar': {
     if (iGame(tebakgambar, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
@@ -4081,32 +3891,7 @@ break
         m.reply('Gagal mengambil soal tebak bendera, coba lagi nanti.')
     }
 }
-			break
-			case 'tebakangka': case 'butawarna': case 'colorblind': {
-				if (iGame(tebakangka, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
-				const { result: hasil } = await fetchApi('/random/color-blind');
-				let { key } = await m.reply({
-					text: `Pilih Jawaban Yang Benar!\nPilihan: ${[hasil.number, ...hasil.similar].sort(() => Math.random() - 0.5).join(', ')}`,
-					contextInfo: {
-						externalAdReply: {
-							renderLargerThumbnail: true,
-							thumbnailUrl: hasil.color_blind[0],
-							body: `Level : ${hasil.lv}`,
-							previewType: 0,
-							mediaType: 1,
-						}
-					}
-				});
-				tebakangka[m.chat + key.id] = {
-					jawaban: hasil.number,
-					id: key.id
-				}
-				await sleep(60000)
-				if (rdGame(tebakangka, m.chat, key.id)) {
-					m.reply('Waktu Habis\nJawaban: ' + tebakangka[m.chat + key.id].jawaban)
-					delete tebakangka[m.chat + key.id]
-				}
-			}
+		
 			break
 			case 'kuismath': case 'math': {
 				const { genMath, modes } = await import('./lib/math.js');
@@ -4570,16 +4355,10 @@ break
 ╭─┴❍「 *SEARCH* 」❍
 │${setv} ${prefix}ytsearch (query)
 │${setv} ${prefix}spotify (query)
-│${setv} ${prefix}pixiv (query)
 │${setv} ${prefix}pinterest (query)
-│${setv} ${prefix}wallpaper (query)
-│${setv} ${prefix}ringtone (query)
 │${setv} ${prefix}google (query)
 │${setv} ${prefix}gimage (query)
-│${setv} ${prefix}npm (query)
-│${setv} ${prefix}style (query)
 │${setv} ${prefix}cuaca (kota)
-│${setv} ${prefix}tenor (query)
 │${setv} ${prefix}urban (query)
 ╰─┬────❍
 ╭─┴❍「 *DOWNLOAD* 」❍
@@ -4591,15 +4370,6 @@ break
 │${setv} ${prefix}facebook (url)
 │${setv} ${prefix}spotifydl (url)
 │${setv} ${prefix}mediafire (url)
-╰─┬────❍
-╭─┴❍「 *QUOTES* 」❍
-│${setv} ${prefix}motivasi
-│${setv} ${prefix}quotes
-│${setv} ${prefix}truth
-│${setv} ${prefix}bijak
-│${setv} ${prefix}dare
-│${setv} ${prefix}bucin
-│${setv} ${prefix}renungan
 ╰─┬────❍
 ╭─┴❍「 *TOOLS* 」❍
 │${setv} ${prefix}get (url) 🔸️
@@ -4620,14 +4390,10 @@ break
 │${setv} ${prefix}smeme (send/reply img)
 │${setv} ${prefix}dehaze (send/reply img)
 │${setv} ${prefix}colorize (send/reply img)
-│${setv} ${prefix}hitamkan (send/reply img)
 │${setv} ${prefix}emojimix 🙃+💀
-│${setv} ${prefix}nulis
 │${setv} ${prefix}readmore text1|text2
 │${setv} ${prefix}qc (pesannya)
 │${setv} ${prefix}translate
-│${setv} ${prefix}wasted (send/reply img)
-│${setv} ${prefix}triggered (send/reply img)
 │${setv} ${prefix}shorturl (urlnya)
 │${setv} ${prefix}gitclone (urlnya)
 │${setv} ${prefix}fat (reply audio)
@@ -4647,10 +4413,6 @@ break
 ╭─┴❍「 *AI* 」❍
 │${setv} ${prefix}ai (query)
 │${setv} ${prefix}gemini (query)
-│${setv} ${prefix}glm (query)
-│${setv} ${prefix}grok (query)
-│${setv} ${prefix}claude (query)
-│${setv} ${prefix}archipelago (query)
 │${setv} ${prefix}deepseek (query)
 │${setv} ${prefix}txt2img (query)
 ╰─┬────❍
@@ -4678,8 +4440,6 @@ break
 │${setv} ${prefix}colorblind
 │${setv} ${prefix}tebakkimia
 │${setv} ${prefix}caklontong
-│${setv} ${prefix}tebakangka
-│${setv} ${prefix}tebaknegara
 │${setv} ${prefix}tebakgambar
 │${setv} ${prefix}tebakbendera
 ╰─┬────❍
@@ -4862,16 +4622,11 @@ break
 ╭──❍「 *SEARCH* 」❍
 │${setv} ${prefix}ytsearch (query)
 │${setv} ${prefix}spotify (query)
-│${setv} ${prefix}pixiv (query)
 │${setv} ${prefix}pinterest (query)
 │${setv} ${prefix}wallpaper (query)
-│${setv} ${prefix}ringtone (query)
 │${setv} ${prefix}google (query)
 │${setv} ${prefix}gimage (query)
-│${setv} ${prefix}npm (query)
-│${setv} ${prefix}style (query)
 │${setv} ${prefix}cuaca (kota)
-│${setv} ${prefix}tenor (query)
 │${setv} ${prefix}urban (query)
 ╰──────❍`)
 			}
@@ -4888,21 +4643,8 @@ break
 │${setv} ${prefix}spotifydl (url)
 │${setv} ${prefix}mediafire (url)
 ╰──────❍`)
-			}
-			break
-			case 'quotesmenu': {
-				m.reply(`
-╭──❍「 *QUOTES* 」❍
-│${setv} ${prefix}motivasi
-│${setv} ${prefix}quotes
-│${setv} ${prefix}truth
-│${setv} ${prefix}bijak
-│${setv} ${prefix}dare
-│${setv} ${prefix}bucin
-│${setv} ${prefix}renungan
-╰──────❍`)
-			}
-			break
+}
+ 			break
 			case 'toolsmenu': {
 				m.reply(`
 ╭──❍「 *TOOLS* 」❍
@@ -4924,14 +4666,10 @@ break
 │${setv} ${prefix}smeme (send/reply img)
 │${setv} ${prefix}dehaze (send/reply img)
 │${setv} ${prefix}colorize (send/reply img)
-│${setv} ${prefix}hitamkan (send/reply img)
 │${setv} ${prefix}emojimix 🙃+💀
-│${setv} ${prefix}nulis
 │${setv} ${prefix}readmore text1|text2
 │${setv} ${prefix}qc (pesannya)
 │${setv} ${prefix}translate
-│${setv} ${prefix}wasted (send/reply img)
-│${setv} ${prefix}triggered (send/reply img)
 │${setv} ${prefix}shorturl (urlnya)
 │${setv} ${prefix}gitclone (urlnya)
 │${setv} ${prefix}fat (reply audio)
@@ -4955,10 +4693,6 @@ break
 ╭──❍「 *AI* 」❍
 │${setv} ${prefix}ai (query)
 │${setv} ${prefix}gemini (query)
-│${setv} ${prefix}glm (query)
-│${setv} ${prefix}grok (query)
-│${setv} ${prefix}claude (query)
-│${setv} ${prefix}archipelago (query)
 │${setv} ${prefix}deepseek (query)
 │${setv} ${prefix}txt2img (query)
 ╰──────❍`)
@@ -5009,8 +4743,6 @@ break
 │${setv} ${prefix}colorblind
 │${setv} ${prefix}tebakkimia
 │${setv} ${prefix}caklontong
-│${setv} ${prefix}tebakangka
-│${setv} ${prefix}tebaknegara
 │${setv} ${prefix}tebakgambar
 │${setv} ${prefix}tebakbendera
 ╰──────❍`)
