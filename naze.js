@@ -2723,7 +2723,7 @@ case 'quotly': {
     }
 }
 break
-			break
+			
 			case 'bratvid': case 'bratvideo': {
     if (!isLimit) return m.reply(global.mess.limit);
     if (!text && (!m.quoted || !m.quoted.text)) return m.reply(`Kirim/reply pesan *${prefix + command}* Teksnya`);
@@ -2756,8 +2756,8 @@ break
         [outputPath, stickerPath].forEach(p => { if (fs.existsSync(p)) fs.unlinkSync(p); });
     }
 }
-break;
-			break
+break
+			
 		
 			case 'nuliskanan': case 'nuliskiri': case 'foliokanan': case 'foliokiri': {
     if (!isLimit) return m.reply(global.mess.limit)
