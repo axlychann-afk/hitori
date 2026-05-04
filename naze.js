@@ -3092,19 +3092,17 @@ break
     m.react('⏳')
     try {
         let apiUrl = `https://api.nexray.eu.cc/downloader/instagram?url=${encodeURIComponent(text)}`
-        // Contoh link: https://api.nexray.eu.cc/downloader/instagram?url=https://www.instagram.com/reel/DX099r0t77k/
         let { data } = await axios.get(apiUrl)
+        // 🔥 PERBAIKAN: Ambil langsung dari data.result[0].url
         if (data.status && data.result && data.result.length > 0) {
-            let medias = data.result
-            let caption = data.caption || ''
-            if (medias.length > 1) {
-                await naze.sendAlbumMessage(m.chat, {
-                    album: medias.map(m => (m.type === 'video' ? { video: { url: m.url } } : { image: { url: m.url } })),
-                    caption: caption
-                }, { quoted: m });
+            let media = data.result[0] // Ambil item pertama (biasanya cukup 1)
+            let mediaUrl = media.url
+            let isVideo = media.type === 'video'
+            // Kirim sebagai video atau gambar
+            if (isVideo) {
+                await m.reply({ video: { url: mediaUrl }, caption: ' Download Berhasil' })
             } else {
-                let mime = medias[0].type === 'video' ? { video: { url: medias[0].url } } : { image: { url: medias[0].url } }
-                await m.reply({ ...mime, caption: caption })
+                await m.reply({ image: { url: mediaUrl }, caption: ' Download Berhasil' })
             }
             setLimit(m, db)
         } else {
