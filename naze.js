@@ -3087,71 +3087,33 @@ break
 			break
 			
        	case 'ig': case 'instagram': case 'instadl': case 'igdown': case 'igdl': {
-    if (!isLimit) return m.reply(global.mess.limit)
-    if (!text) return m.reply(`Example: ${prefix + command} url_instagram`)
-    if (!text.includes('instagram.com')) return m.reply('Url Tidak Mengandung Result Dari Instagram!')
-    m.react('⏳')
+    if (!isLimit) return m.reply(global.mess.limit);
+    if (!text) return m.reply(`Example: ${prefix + command} url_instagram`);
+    if (!text.includes('instagram.com')) return m.reply('Url Tidak Mengandung Result Dari Instagram!');
+    m.react('⏳');
     try {
-        // 🔥 URL API Baru
-        let apiUrl = `https://api.nexray.eu.cc/downloader/v2/instagram?url=${encodeURIComponent(text)}`
-        let { data } = await axios.get(apiUrl)
-
-        // ✅ Struktur respons yang benar: cek status, lalu ambil dari data.result
-        if (data && data.status && data.result) {
-            const medias = data.result
-            const caption = data.caption || '✅ Download Berhasil'
-
-            // Jika hasilnya berupa array (bisa lebih dari 1 media)
-            if (Array.isArray(medias) && medias.length > 0) {
-                // Jika hanya 1 media, kirim langsung
-                if (medias.length === 1) {
-                    const media = medias[0]
-                    const mediaUrl = media.url || media.link
-                    if (media.type === 'video') {
-                        await m.reply({ video: { url: mediaUrl }, caption: caption })
-                    } else {
-                        await m.reply({ image: { url: mediaUrl }, caption: caption })
-                    }
-                } 
-                // Jika lebih dari 1 media, coba kirim sebagai album
-                else {
-                    const album = medias.map(media => {
-                        const mediaUrl = media.url || media.link
-                        return media.type === 'video' ? { video: { url: mediaUrl } } : { image: { url: mediaUrl } }
-                    })
-                    // Cek apakah fungsi sendAlbumMessage tersedia
-                    if (typeof naze.sendAlbumMessage === 'function') {
-                        await naze.sendAlbumMessage(m.chat, { album: album, caption: caption }, { quoted: m })
-                    } else {
-                        // Fallback jika sendAlbumMessage tidak ada: kirim satu per satu
-                        for (let media of medias) {
-                            const mediaUrl = media.url || media.link
-                            if (media.type === 'video') {
-                                await m.reply({ video: { url: mediaUrl }, caption: caption })
-                            } else {
-                                await m.reply({ image: { url: mediaUrl }, caption: caption })
-                            }
-                            await sleep(1000) // jeda 1 detik biar ga ke-spam
-                        }
-                    }
-                }
-                setLimit(m, db)
+        // 🔥 Impor librari instapro di sini
+        const { getMediaByCode } = require('instapro'); 
+        // Ekstrak shortcode (kode unik) dari URL Instagram
+        const shortcode = text.split('/').filter(part => part.length > 0).pop()?.split('?')[0];
+        if (!shortcode) throw new Error('Shortcode tidak ditemukan!');
+        // Panggil fungsi untuk mengambil data media berdasarkan shortcode
+        const result = await getMediaByCode(shortcode);
+        if (result && result.url) {
+            // Kirim media (video atau gambar)
+            const caption = `✅ *Download Berhasil*`;
+            if (result.isVideo) {
+                await m.reply({ video: { url: result.url }, caption: caption });
             } else {
-                // Jika data.result bukan array atau kosong (misal response untuk single media)
-                const mediaUrl = medias.url || medias.link
-                if (medias.type === 'video') {
-                    await m.reply({ video: { url: mediaUrl }, caption: caption })
-                } else {
-                    await m.reply({ image: { url: mediaUrl }, caption: caption })
-                }
-                setLimit(m, db)
+                await m.reply({ image: { url: result.url }, caption: caption });
             }
+            setLimit(m, db);
         } else {
-            m.reply('Gagal mengambil media. Pastikan URL benar dan postingan tidak private.')
+            m.reply('⚠️ Gagal mengambil media. Pastikan URL benar dan postingan tidak private.');
         }
     } catch (e) {
-        console.error(e)
-        m.reply(global.mess.fail)
+        console.error(e);
+        m.reply(`❌ Error: ${e.message}`);
     }
 }
 			break
