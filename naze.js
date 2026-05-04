@@ -8,7 +8,6 @@ process.once('unhandledRejection', console.error)
 */
 
 import './settings.js';
-import { igdl } from './lib/igdl.js';
 import fs from 'fs';
 import os from 'os';
 import util from 'util';
@@ -43,6 +42,7 @@ import { cmdAdd, cmdAddHit, addExpired, getPosition, getExpired, getStatus, chec
 import { rdGame, iGame, tGame, gameSlot, gameCasinoSolo, gameSamgongSolo, gameMerampok, gameBegal, daily, buy, setLimit, addLimit, addMoney, setMoney, transfer, Blackjack, SnakeLadder } from './lib/game.js';
 import { getRandom, getBuffer, fetchJson, runtime, clockString, sleep, isUrl, formatDate, formatp, generateProfilePicture, errorCache, normalize, runUpdate, updateSettings, parseMention, fixBytes, similarity, pickRandom, encodeToLetters, tarBackup } from './lib/function.js';
 
+import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -3093,26 +3093,33 @@ break
     if (!text.includes('instagram.com')) return m.reply('Url Tidak Mengandung Result Dari Instagram!')
     m.react('⏳')
     try {
+        // 🔥 Panggil require di sini (pastikan Anda sudah createRequire di atas)
+        const { igdl } = require('./lib/igdl.js');
         const result = await igdl(text)
+
         if (result.status && result.result && result.result.downloadUrl && result.result.downloadUrl.length > 0) {
             const urls = result.result.downloadUrl
             const caption = `✅ *Download Berhasil*\n📁 Source: ${result.source || 'igdl'}`
             if (urls.length > 1) {
-                // Kirim album
                 const album = urls.map(url => {
-                    // Cek ekstensi atau asumsi video jika mengandung keyword tertentu
-                    const isVideo = url.includes('.mp4') || url.includes('/video/') || url.match(/\.(mp4|m3u8)/i)
+                    const isVideo = url.includes('.mp4') || url.includes('/video/') || /\.(mp4|m3u8)/i.test(url)
                     return isVideo ? { video: { url } } : { image: { url } }
                 })
-                await naze.sendAlbumMessage(m.chat, { album, caption }, { quoted: m })
+                if (typeof naze.sendAlbumMessage === 'function') {
+                    await naze.sendAlbumMessage(m.chat, { album, caption }, { quoted: m })
+                } else {
+                    for (let url of urls) {
+                        const isVideo = url.includes('.mp4') || url.includes('/video/') || /\.(mp4|m3u8)/i.test(url)
+                        if (isVideo) await m.reply({ video: { url }, caption })
+                        else await m.reply({ image: { url }, caption })
+                        await sleep(1000)
+                    }
+                }
             } else {
                 const url = urls[0]
-                const isVideo = url.includes('.mp4') || url.includes('/video/') || url.match(/\.(mp4|m3u8)/i)
-                if (isVideo) {
-                    await m.reply({ video: { url }, caption })
-                } else {
-                    await m.reply({ image: { url }, caption })
-                }
+                const isVideo = url.includes('.mp4') || url.includes('/video/') || /\.(mp4|m3u8)/i.test(url)
+                if (isVideo) await m.reply({ video: { url }, caption })
+                else await m.reply({ image: { url }, caption })
             }
             setLimit(m, db)
         } else {
