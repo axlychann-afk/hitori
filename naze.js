@@ -3763,8 +3763,7 @@ break
         console.log(e)
         m.reply('Gagal mengambil soal caklontong, coba lagi nanti.')
     }
-}
-			
+}		
 			break
 			case 'tebakgambar': {
     if (iGame(tebakgambar, m.chat)) return m.reply('Masih Ada Sesi Yang Belum Diselesaikan!')
