@@ -3087,56 +3087,61 @@ break
 			break
 			
        	case 'ig': case 'instagram': case 'instadl': case 'igdown': case 'igdl': {
-    // ... (Cek limit, text, dan react - sama seperti sebelumnya)
-
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!text) return m.reply(`Example: ${prefix + command} url_instagram`)
+    if (!text.includes('instagram.com')) return m.reply('Url Tidak Mengandung Result Dari Instagram!')
+    m.react('⏳')
     try {
-        // 🔥 1. Panggil package @totallynotdavid/downloader
-        const { resolve } = require('@totallynotdavid/downloader');
-        const result = await resolve(text);
+        // Panggil API
+        const apiUrl = `https://api.nexray.eu.cc/downloader/v2/instagram?url=${encodeURIComponent(text)}`
+        const { data } = await axios.get(apiUrl)
 
-        if (result && result.urls && result.urls.length > 0) {
-            let caption = `✅ *Download Berhasil*\n📁 Source: totallynotdavid`;
+        // Cek status dan ketersediaan media
+        if (data.status && data.result && data.result.media && data.result.media.length > 0) {
+            const medias = data.result.media
+            const caption = `✨ *Instagram Downloader* ✨\n\n` +
+                           `📝 *Judul:* ${data.result.title || '-'}\n` +
+                           `👤 *Username:* ${data.result.username || '-'}\n` +
+                           `❤️ *Likes:* ${data.result.likes || 0}\n` +
+                           `💬 *Komentar:* ${data.result.comment || 0}\n` +
+                           `✅ *Download Berhasil*`
 
-            // Tambahkan metadata jika tersedia (author, title)
-            if (result.meta) {
-                if (result.meta.author) caption += `\n👤 *Author:* ${result.meta.author}`;
-                if (result.meta.title) caption += `\n📝 *Title:* ${result.meta.title}`;
-            }
-
-            // 2. Kirim semua media yang ditemukan (menangani kasus carousel)
-            if (result.urls.length === 1) {
-                const media = result.urls[0];
-                if (media.type === 'video') {
-                    await m.reply({ video: { url: media.url }, caption: caption });
-                } else {
-                    await m.reply({ image: { url: media.url }, caption: caption });
-                }
-            } else {
-                // Kirim sebagai album jika bot Anda mendukung
-                const album = result.urls.map(media => {
-                    return media.type === 'video' ? { video: { url: media.url } } : { image: { url: media.url } };
-                });
+            // Kirim sebagai album jika lebih dari satu media
+            if (medias.length > 1) {
+                const album = medias.map(media => {
+                    const isVideo = media.type === 'mp4' || media.type === 'video'
+                    return isVideo ? { video: { url: media.url } } : { image: { url: media.url } }
+                })
                 if (typeof naze.sendAlbumMessage === 'function') {
-                    await naze.sendAlbumMessage(m.chat, { album: album, caption: caption }, { quoted: m });
+                    await naze.sendAlbumMessage(m.chat, { album, caption }, { quoted: m })
                 } else {
-                    for (let media of result.urls) {
-                        if (media.type === 'video') await m.reply({ video: { url: media.url }, caption: caption });
-                        else await m.reply({ image: { url: media.url }, caption: caption });
-                        await sleep(1000);
+                    for (let media of medias) {
+                        const isVideo = media.type === 'mp4' || media.type === 'video'
+                        if (isVideo) await m.reply({ video: { url: media.url }, caption })
+                        else await m.reply({ image: { url: media.url }, caption })
+                        await sleep(1000)
                     }
                 }
+            } else {
+                // Hanya satu media
+                const media = medias[0]
+                const isVideo = media.type === 'mp4' || media.type === 'video'
+                if (isVideo) {
+                    await m.reply({ video: { url: media.url }, caption })
+                } else {
+                    await m.reply({ image: { url: media.url }, caption })
+                }
             }
-            setLimit(m, db);
+            setLimit(m, db)
         } else {
-            m.reply('⚠️ Gagal mengambil media. Pastikan URL benar.');
+            m.reply('⚠️ Gagal mengambil media. Pastikan URL benar dan postingan tidak private.')
         }
     } catch (e) {
-        console.error(e);
-        m.reply(`❌ Error: ${e.message}`);
+        console.error(e)
+        m.reply(global.mess.fail)
     }
-    // ... (break - sama seperti sebelumnya)
 }
-break;
+break
 		case 'tiktok': case 'tiktokdown': case 'ttdown': case 'ttdl': case 'tt': case 'ttmp4': case 'ttvideo': case 'tiktokmp4': case 'tiktokvideo': {
     if (!isLimit) return m.reply(global.mess.limit)
     if (!text) return m.reply(`Example: ${prefix + command} url_tiktok`)
