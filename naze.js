@@ -3086,7 +3086,8 @@ break
     }
 }
 			break
-			case 'ig': case 'instagram': case 'instadl': case 'igdown': case 'igdl': {
+			
+       	case 'ig': case 'instagram': case 'instadl': case 'igdown': case 'igdl': {
     if (!isLimit) return m.reply(global.mess.limit)
     if (!text) return m.reply(`Example: ${prefix + command} url_instagram`)
     if (!text.includes('instagram.com')) return m.reply('Url Tidak Mengandung Result Dari Instagram!')
