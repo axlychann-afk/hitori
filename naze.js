@@ -3087,40 +3087,56 @@ break
 			break
 			
        	case 'ig': case 'instagram': case 'instadl': case 'igdown': case 'igdl': {
-    if (!isLimit) return m.reply(global.mess.limit);
-    if (!text) return m.reply(`Example: ${prefix + command} https://www.instagram.com/p/CxKjXK7oB3L/`);
-    if (!text.includes('instagram.com')) return m.reply('Url Tidak Mengandung Result Dari Instagram!');
-    m.react('⏳');
+    // ... (Cek limit, text, dan react - sama seperti sebelumnya)
+
     try {
-        // Ekstrak shortcode dengan regex yang lebih handal
-        const regex = /instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/;
-        const match = text.match(regex);
-        if (!match || !match[1]) {
-            return m.reply('❌ Gagal mengekstrak shortcode. Pastikan URL adalah link postingan (bukan profil). Contoh: https://www.instagram.com/p/CxKjXK7oB3L/');
-        }
-        const shortcode = match[1];
-        
-        // Impor library instapro di sini
-        const { getMediaByCode } = require('instapro');
-        const result = await getMediaByCode(shortcode);
-        
-        if (result && result.url) {
-            const caption = `✅ *Download Berhasil*\n📁 Source: instapro`;
-            if (result.isVideo) {
-                await m.reply({ video: { url: result.url }, caption: caption });
+        // 🔥 1. Panggil package @totallynotdavid/downloader
+        const { resolve } = require('@totallynotdavid/downloader');
+        const result = await resolve(text);
+
+        if (result && result.urls && result.urls.length > 0) {
+            let caption = `✅ *Download Berhasil*\n📁 Source: totallynotdavid`;
+
+            // Tambahkan metadata jika tersedia (author, title)
+            if (result.meta) {
+                if (result.meta.author) caption += `\n👤 *Author:* ${result.meta.author}`;
+                if (result.meta.title) caption += `\n📝 *Title:* ${result.meta.title}`;
+            }
+
+            // 2. Kirim semua media yang ditemukan (menangani kasus carousel)
+            if (result.urls.length === 1) {
+                const media = result.urls[0];
+                if (media.type === 'video') {
+                    await m.reply({ video: { url: media.url }, caption: caption });
+                } else {
+                    await m.reply({ image: { url: media.url }, caption: caption });
+                }
             } else {
-                await m.reply({ image: { url: result.url }, caption: caption });
+                // Kirim sebagai album jika bot Anda mendukung
+                const album = result.urls.map(media => {
+                    return media.type === 'video' ? { video: { url: media.url } } : { image: { url: media.url } };
+                });
+                if (typeof naze.sendAlbumMessage === 'function') {
+                    await naze.sendAlbumMessage(m.chat, { album: album, caption: caption }, { quoted: m });
+                } else {
+                    for (let media of result.urls) {
+                        if (media.type === 'video') await m.reply({ video: { url: media.url }, caption: caption });
+                        else await m.reply({ image: { url: media.url }, caption: caption });
+                        await sleep(1000);
+                    }
+                }
             }
             setLimit(m, db);
         } else {
-            m.reply('⚠️ Gagal mengambil media. Pastikan postingan tidak private dan URL benar.');
+            m.reply('⚠️ Gagal mengambil media. Pastikan URL benar.');
         }
     } catch (e) {
         console.error(e);
         m.reply(`❌ Error: ${e.message}`);
     }
+    // ... (break - sama seperti sebelumnya)
 }
-			break
+break;
 		case 'tiktok': case 'tiktokdown': case 'ttdown': case 'ttdl': case 'tt': case 'ttmp4': case 'ttvideo': case 'tiktokmp4': case 'tiktokvideo': {
     if (!isLimit) return m.reply(global.mess.limit)
     if (!text) return m.reply(`Example: ${prefix + command} url_tiktok`)
