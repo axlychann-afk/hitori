@@ -8,6 +8,7 @@ process.once('unhandledRejection', console.error)
 */
 
 import './settings.js';
+import { igdl } from './lib/igdl.js';
 import fs from 'fs';
 import os from 'os';
 import util from 'util';
@@ -3091,25 +3092,33 @@ break
     if (!text.includes('instagram.com')) return m.reply('Url Tidak Mengandung Result Dari Instagram!')
     m.react('⏳')
     try {
-        let apiUrl = `https://api.nexray.eu.cc/downloader/instagram?url=${encodeURIComponent(text)}`
-        let { data } = await axios.get(apiUrl)
-        // 🔥 PERBAIKAN: Ambil langsung dari data.result[0].url
-        if (data.status && data.result && data.result.length > 0) {
-            let media = data.result[0] // Ambil item pertama (biasanya cukup 1)
-            let mediaUrl = media.url
-            let isVideo = media.type === 'video'
-            // Kirim sebagai video atau gambar
-            if (isVideo) {
-                await m.reply({ video: { url: mediaUrl }, caption: ' Download Berhasil' })
+        const result = await igdl(text)
+        if (result.status && result.result && result.result.downloadUrl && result.result.downloadUrl.length > 0) {
+            const urls = result.result.downloadUrl
+            const caption = `✅ *Download Berhasil*\n📁 Source: ${result.source || 'igdl'}`
+            if (urls.length > 1) {
+                // Kirim album
+                const album = urls.map(url => {
+                    // Cek ekstensi atau asumsi video jika mengandung keyword tertentu
+                    const isVideo = url.includes('.mp4') || url.includes('/video/') || url.match(/\.(mp4|m3u8)/i)
+                    return isVideo ? { video: { url } } : { image: { url } }
+                })
+                await naze.sendAlbumMessage(m.chat, { album, caption }, { quoted: m })
             } else {
-                await m.reply({ image: { url: mediaUrl }, caption: ' Download Berhasil' })
+                const url = urls[0]
+                const isVideo = url.includes('.mp4') || url.includes('/video/') || url.match(/\.(mp4|m3u8)/i)
+                if (isVideo) {
+                    await m.reply({ video: { url }, caption })
+                } else {
+                    await m.reply({ image: { url }, caption })
+                }
             }
             setLimit(m, db)
         } else {
-            m.reply('Postingan Tidak Tersedia atau Privat!')
+            m.reply('Gagal mengambil media. Pastikan URL benar dan postingan tidak private.')
         }
     } catch (e) {
-        console.log(e)
+        console.error(e)
         m.reply(global.mess.fail)
     }
 }
