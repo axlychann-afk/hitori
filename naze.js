@@ -3242,23 +3242,24 @@ break
     if (!isUrl(args[0]) && !args[0].includes('open.spotify.com/track')) return m.reply('Url Invalid!')
     try {
         let apiUrl = `https://api.nexray.eu.cc/downloader/spotify?url=${encodeURIComponent(text)}`
-        // Contoh link: https://api.nexray.eu.cc/downloader/spotify?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F0JiVRyTJcJnmlwCZ854K4p
         let { data } = await axios.get(apiUrl)
-        if (data.status && data.result) {
+        
+        if (data.status && data.result && data.result.url) {
             const hasil = data.result
             m.react('⏳')
+            
+            // Gunakan data yang tersedia, bukan metadata yang tidak ada
+            const judul = `${hasil.artist || 'Artist'} • ${hasil.title || 'Title'}`
+            
             await m.reply({
                 audio: { url: hasil.url },
                 mimetype: 'audio/mpeg',
                 contextInfo: {
                     externalAdReply: {
-                        title: hasil.metadata.artists[0].name + ' • ' + hasil.metadata.name,
-                        body: clockString(hasil.metadata.duration_ms),
+                        title: judul,
+                        body: 'Downloaded by Bot',
                         previewType: 'PHOTO',
-                        thumbnailUrl: hasil.metadata.album.images[0].url,
-                        mediaType: 1,
-                        renderLargerThumbnail: true,
-                        sourceUrl: text
+                        thumbnailUrl: 'https://i.scdn.co/image/ab67616d0000b273' // thumbnail default Spotify
                     }
                 }
             })
