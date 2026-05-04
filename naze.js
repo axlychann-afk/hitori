@@ -2779,7 +2779,7 @@ break;
         // Data gambar dalam bentuk buffer
         const imageBuffer = Buffer.from(response.data)
         
-        // Simpan buffer ke file temporary seperti perilaku fetchApi sebelumnya (stream: true)
+        // Simpan buffer ke file temporary seperti perilaku  sebelumnya (stream: true)
         const tempFilePath = path.join(process.cwd(), 'database/temp', `${Date.now()}.png`)
         fs.writeFileSync(tempFilePath, imageBuffer)
         hasil = tempFilePath
@@ -3021,63 +3021,23 @@ break
     if (!text) return m.reply(`Example: ${prefix + command} url_youtube`)
     if (!text.includes('youtu')) return m.reply('Url Tidak Mengandung Result Dari Youtube!')
     m.react('⏳')
-    
-    const apikey = 'bagahapi-NBLj2AcxLjKWIWF9' // Ganti dengan API key valid kamu
-    
     try {
-        const response = await axios({
-            method: 'GET',
-            url: 'https://api.bagahproject.com/api/ytmp3',
-            params: {
-                apikey: apikey,
-                url: text,
-                bitrate: 128
-            },
-            headers: {
-                'x-api-key': apikey
-            }
-        })
-        
-        const data = response.data
-        
-        // Sesuaikan path ini dengan struktur response asli API
-        // (perlu dicek saat API sudah merespon 200)
-        const audioUrl = data.result?.url || data.url || data.download
-        
-        if (!audioUrl) throw new Error('Audio URL not found')
-        
-        await m.reply({
-            audio: { url: audioUrl },
-            mimetype: 'audio/mpeg',
-            contextInfo: {
-                externalAdReply: {
-                    title: data.result?.title || data.title || 'Youtube Audio',
-                    body: data.result?.channel || data.channel || 'Downloaded by Bot',
-                    previewType: 'PHOTO',
-                    thumbnailUrl: data.result?.thumbnail || data.thumbnail || '',
-                    mediaType: 1,
-                    renderLargerThumbnail: true,
-                    sourceUrl: text
-                }
-            }
-        })
-        setLimit(m, db)
-        
-    } catch (e) {
-        console.error('API Bagahproject error:', e.response?.status, e.response?.data || e.message)
-        
-        // FALLBACK 1: ytMp3
-        try {
-            const hasil = await ytMp3(text);
+        const apiUrl = `https://api.nexray.eu.cc/downloader/ytmp3?url=${encodeURIComponent(text)}`
+        // Contoh link: https://api.nexray.eu.cc/downloader/ytmp3?url=https%3A%2F%2Fyoutube.com%2Fwatch%3Fv%3DgmFnfTj_1Nc
+        const { data } = await axios.get(apiUrl)
+        if (data.status && data.result) {
+            const hasil = data.result
+            const audioUrl = hasil.url || hasil.download || hasil.audio
+            if (!audioUrl) throw new Error('Audio URL not found')
             await m.reply({
-                audio: { url: hasil.result },
+                audio: { url: audioUrl },
                 mimetype: 'audio/mpeg',
                 contextInfo: {
                     externalAdReply: {
-                        title: hasil.title,
-                        body: hasil.channel,
+                        title: hasil.title || 'Youtube Audio',
+                        body: hasil.channel || hasil.uploader || '',
                         previewType: 'PHOTO',
-                        thumbnailUrl: hasil.thumb,
+                        thumbnailUrl: hasil.thumbnail || '',
                         mediaType: 1,
                         renderLargerThumbnail: true,
                         sourceUrl: text
@@ -3085,85 +3045,76 @@ break
                 }
             })
             setLimit(m, db)
-        } catch (e2) {
-            // FALLBACK 2: fetchApi
-            try {
-                const { result: hasil } = await fetchApi('/download/youtube', { url: text });
-                await m.reply({
-                    audio: { url: hasil.download },
-                    mimetype: 'audio/mpeg',
-                    contextInfo: {
-                        externalAdReply: {
-                            title: hasil.title,
-                            body: hasil.quality,
-                            previewType: 'PHOTO',
-                            thumbnailUrl: hasil.thumbnail,
-                            mediaType: 1,
-                            renderLargerThumbnail: true,
-                            sourceUrl: text
-                        }
-                    }
-                })
-                setLimit(m, db)
-            } catch (e3) {
-                console.error(e3)
-                m.reply(global.mess.fail)
-            }
+        } else {
+            throw new Error('Gagal mendapatkan data')
         }
+    } catch (e) {
+        console.log(e)
+        m.reply(global.mess.fail)
     }
 }
 break
 			case 'ytmp4': case 'ytvideo': case 'ytplayvideo': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text) return m.reply(`Example: ${prefix + command} url_youtube`)
-				if (!text.includes('youtu')) return m.reply('Url Tidak Mengandung Result Dari Youtube!')
-				m.react('⏳')
-				let videoPath = null;
-				try {
-					const hasil = await ytMp4(text);
-					videoPath = hasil.result;
-					await m.reply({ video: { url: videoPath }, caption: `*📍Title:* ${hasil.title}\n*✏Description:* ${hasil.desc ? hasil.desc : ''}\n*🚀Channel:* ${hasil.channel}\n*🗓Upload at:* ${hasil.uploadDate}`});
-					setLimit(m, db)
-				} catch (e) {
-					try {
-						const { result: hasil } = await fetchApi('/download/youtube', { url: text, format: '360' });
-						await m.reply({ video: { url: hasil.download }, caption: `*📍Title:* ${hasil.title}\n*✏Quality:* ${hasil.quality ? hasil.quality : ''}\n*⏳Duration:* ${hasil.duration}` })
-						setLimit(m, db)
-					} catch (e) {
-						m.reply(global.mess.fail);
-					}
-				} finally {
-					if (videoPath && fs.existsSync(videoPath)) {
-						try {
-							fs.unlinkSync(videoPath);
-						} catch (e) {
-							console.error(e);
-						}
-					}
-				}
-			}
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!text) return m.reply(`Example: ${prefix + command} url_youtube`)
+    if (!text.includes('youtu')) return m.reply('Url Tidak Mengandung Result Dari Youtube!')
+    m.react('⏳')
+    const downloadVideo = async (resolusi) => {
+        const apiUrl = `https://api.nexray.eu.cc/downloader/ytmp4?url=${encodeURIComponent(text)}&resolusi=${resolusi}`
+        // Contoh link: https://api.nexray.eu.cc/downloader/ytmp4?url=https%3A%2F%2Fyoutube.com%2Fwatch%3Fv%3DgmFnfTj_1Nc&resolusi=360
+        const { data } = await axios.get(apiUrl)
+        if (data.status && data.result) return data.result
+        throw new Error('Gagal mendapatkan data video')
+    }
+    try {
+        // Coba resolusi tinggi dulu (720), fallback ke 360
+        let hasil
+        try {
+            hasil = await downloadVideo('720')
+        } catch {
+            hasil = await downloadVideo('360')
+        }
+        await m.reply({
+            video: { url: hasil.download_url || hasil.url },
+            caption: `*📍Title:* ${hasil.title || '-'}\n*✏Description:* ${hasil.desc || ''}\n*🚀Channel:* ${hasil.channel || hasil.uploader || '-'}\n*🗓Upload at:* ${hasil.upload_date || '-'}\n*⏳Duration:* ${hasil.duration || '-'}`
+        })
+        setLimit(m, db)
+    } catch (e) {
+        console.log(e)
+        m.reply(global.mess.fail)
+    }
+}
 			break
 			case 'ig': case 'instagram': case 'instadl': case 'igdown': case 'igdl': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text) return m.reply(`Example: ${prefix + command} url_instagram`)
-				if (!text.includes('instagram.com')) return m.reply('Url Tidak Mengandung Result Dari Instagram!')
-				m.react('⏳')
-				try {
-					let hasil = await fetchApi('/download/instagram2', { url: text })
-					if(hasil.result?.urls?.length > 1) {
-						await naze.sendAlbumMessage(m.chat, {
-							album: hasil.result.urls.map(a => (a.is_video ? { video: { url: a.url }} : { image: { url: a.url }})),
-							caption: hasil.result.caption
-						}, { quoted: m });
-					} else if(hasil.result?.urls?.length == 1) {
-						m.reply({ image: { url: hasil.result.urls[0].url }, caption: hasil.result.caption });
-					} else m.reply('Postingan Tidak Tersedia atau Privat!')
-					setLimit(m, db)
-				} catch (e) {
-					console.log(e)
-					m.reply(global.mess.fail)
-				}
-			}
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!text) return m.reply(`Example: ${prefix + command} url_instagram`)
+    if (!text.includes('instagram.com')) return m.reply('Url Tidak Mengandung Result Dari Instagram!')
+    m.react('⏳')
+    try {
+        let apiUrl = `https://api.nexray.eu.cc/downloader/instagram?url=${encodeURIComponent(text)}`
+        // Contoh link: https://api.nexray.eu.cc/downloader/instagram?url=https://www.instagram.com/reel/DX099r0t77k/
+        let { data } = await axios.get(apiUrl)
+        if (data.status && data.result && data.result.length > 0) {
+            let medias = data.result
+            let caption = data.caption || ''
+            if (medias.length > 1) {
+                await naze.sendAlbumMessage(m.chat, {
+                    album: medias.map(m => (m.type === 'video' ? { video: { url: m.url } } : { image: { url: m.url } })),
+                    caption: caption
+                }, { quoted: m });
+            } else {
+                let mime = medias[0].type === 'video' ? { video: { url: medias[0].url } } : { image: { url: medias[0].url } }
+                await m.reply({ ...mime, caption: caption })
+            }
+            setLimit(m, db)
+        } else {
+            m.reply('Postingan Tidak Tersedia atau Privat!')
+        }
+    } catch (e) {
+        console.log(e)
+        m.reply(global.mess.fail)
+    }
+}
 			break
 		case 'tiktok': case 'tiktokdown': case 'ttdown': case 'ttdl': case 'tt': case 'ttmp4': case 'ttvideo': case 'tiktokmp4': case 'tiktokvideo': {
     if (!isLimit) return m.reply(global.mess.limit)
@@ -3264,65 +3215,62 @@ break
     }
 }
 			break
-			case 'fb': case 'fbdl': case 'fbdown': case 'facebook': case 'facebookdl': case 'facebookdown': case 'fbdownload': case 'fbmp4': case 'fbvideo': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text) return m.reply(`Example: ${prefix + command} url_facebook`)
-				if (!text.includes('facebook.com')) return m.reply('Url Tidak Mengandung Result Dari Facebook!')
-				try {
-					const hasil = await fetchApi('/download/facebook', { url: text });
-					if (!hasil.result.hd && !hasil.result.sd) {
-						m.reply('Video Tidak ditemukan!')
-					} else {
-						m.react('⏳')
-						await naze.sendFileUrl(m.chat, hasil.result.hd || hasil.result.sd, `*🎐Title:* ${hasil.result.title}`, m);
-					}
-					setLimit(m, db)
-				} catch (e) {
-					m.reply(global.mess.fail)
-				}
-			}
-			break
 			case 'mediafire': case 'mf': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text) return m.reply(`Example: ${prefix + command} https://www.mediafire.com/file/xxxxxxxxx/xxxxx.zip/file`)
-				if (!isUrl(args[0]) && !args[0].includes('mediafire.com')) return m.reply('Url Invalid!')
-				try {
-					let { result: res } = await fetchApi('/download/mediafire', { url: text })
-					await naze.sendMedia(m.chat, res.link, res.filename, `*MEDIAFIRE DOWNLOADER*\n\n*${setv} Name* : ${res.filename}\n*${setv} Size* : ${res.size}`, m)
-					setLimit(m, db)
-				} catch (e) {
-					m.reply(global.mess.fail)
-				}
-			}
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!text) return m.reply(`Example: ${prefix + command} https://www.mediafire.com/file/xxxxxxxxx/xxxxx.zip/file`)
+    if (!isUrl(args[0]) && !args[0].includes('mediafire.com')) return m.reply('Url Invalid!')
+    try {
+        const apiUrl = `https://api.nexray.eu.cc/downloader/mediafire?url=${encodeURIComponent(text)}`
+        // Contoh link: https://api.nexray.eu.cc/downloader/mediafire?url=https%3A%2F%2Fwww.mediafire.com%2Ffile%2F3hqfar1qi96fp8b%2Fdarktempest.apk%2Ffile
+        const { data } = await axios.get(apiUrl)
+        if (data.status && data.result) {
+            const res = data.result
+            await naze.sendMedia(m.chat, res.link, res.filename, `*MEDIAFIRE DOWNLOADER*\n\n*${setv} Name* : ${res.filename}\n*${setv} Size* : ${res.size}`, m)
+            setLimit(m, db)
+        } else {
+            throw new Error('Gagal mendapatkan data')
+        }
+    } catch (e) {
+        console.log(e)
+        m.reply(global.mess.fail)
+    }
+}
 			break
 			case 'spotifydl': {
-				if (!isLimit) return m.reply(global.mess.limit)
-				if (!text) return m.reply(`Example: ${prefix + command} https://open.spotify.com/track/0JiVRyTJcJnmlwCZ854K4p`)
-				if (!isUrl(args[0]) && !args[0].includes('open.spotify.com/track')) return m.reply('Url Invalid!')
-				try {
-					const { result: hasil } = await fetchApi('/download/spotify', { url: text });
-					m.react('⏳')
-					await m.reply({
-						audio: { url: hasil.url },
-						mimetype: 'audio/mpeg',
-						contextInfo: {
-							externalAdReply: {
-								title: hasil.metadata.artists[0].name + ' • ' + hasil.metadata.name,
-								body: clockString(hasil.metadata.duration_ms),
-								previewType: 'PHOTO',
-								thumbnailUrl: hasil.metadata.album.images[0].url,
-								mediaType: 1,
-								renderLargerThumbnail: true,
-								sourceUrl: text
-							}
-						}
-					})
-					setLimit(m, db)
-				} catch (e) {
-					console.log(e)
-					m.reply(global.mess.fail)
-				}
-			}
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!text) return m.reply(`Example: ${prefix + command} https://open.spotify.com/track/0JiVRyTJcJnmlwCZ854K4p`)
+    if (!isUrl(args[0]) && !args[0].includes('open.spotify.com/track')) return m.reply('Url Invalid!')
+    try {
+        let apiUrl = `https://api.nexray.eu.cc/downloader/spotify?url=${encodeURIComponent(text)}`
+        // Contoh link: https://api.nexray.eu.cc/downloader/spotify?url=https%3A%2F%2Fopen.spotify.com%2Ftrack%2F0JiVRyTJcJnmlwCZ854K4p
+        let { data } = await axios.get(apiUrl)
+        if (data.status && data.result) {
+            const hasil = data.result
+            m.react('⏳')
+            await m.reply({
+                audio: { url: hasil.url },
+                mimetype: 'audio/mpeg',
+                contextInfo: {
+                    externalAdReply: {
+                        title: hasil.metadata.artists[0].name + ' • ' + hasil.metadata.name,
+                        body: clockString(hasil.metadata.duration_ms),
+                        previewType: 'PHOTO',
+                        thumbnailUrl: hasil.metadata.album.images[0].url,
+                        mediaType: 1,
+                        renderLargerThumbnail: true,
+                        sourceUrl: text
+                    }
+                }
+            })
+            setLimit(m, db)
+        } else {
+            throw new Error('Gagal mengunduh')
+        }
+    } catch (e) {
+        console.log(e)
+        m.reply(global.mess.fail)
+    }
+}
 			break
 			
 		
@@ -3428,17 +3376,7 @@ break
 				let sifat_b = ['Sombong','Minder','Pendendam','Sensitif','Perfeksionis','Caper','Pelit','Egois','Pesimis','Penyendiri','Manipulatif','Labil','Penakut','Vulgar','Tidak setia','Pemalas','Kasar','Rumit','Boros','Keras kepala','Tidak bijak','Pembelot','Serakah','Tamak','Penggosip','Rasis','Ceroboh','Intoleran']
 				let teks = `╭──❍「 *Cek Sifat* 」❍\n│• Sifat ${text && m.mentionedJid ? text : '@' + m.sender.split('@')[0]}${(text && m.mentionedJid ? '' : (`\n│• Nama : *${text ? text : m.pushName}*` || '\n│• Nama : *Tanpa Nama*'))}\n│• Orang yang : *${pickRandom(sifat_a)}*\n│• Kekurangan : *${pickRandom(sifat_b)}*\n│• Keberanian : *${Math.floor(Math.random() * 100)}%*\n│• Kepedulian : *${Math.floor(Math.random() * 100)}%*\n│• Kecemasan : *${Math.floor(Math.random() * 100)}%*\n│• Ketakutan : *${Math.floor(Math.random() * 100)}%*\n│• Akhlak Baik : *${Math.floor(Math.random() * 100)}%*\n│• Akhlak Buruk : *${Math.floor(Math.random() * 100)}%*\n╰──────❍`
 				m.reply(teks)
-			}
-			break
-			case 'cekkhodam': {
-				if (!text) return m.reply(`Example : ${prefix + command} nama lu`)
-				try {
-					const { result: hasil } = await fetchApi('/primbon/cekkhodam');
-					m.reply(`Khodam dari *${text}* adalah *${hasil.nama}*\n_${hasil.deskripsi}_`)
-				} catch (e) {
-					m.reply(pickRandom(['Dokter Indosiar','Sigit Rendang','Ustadz Sinetron','Bocil epep']))
-				}
-			}
+			}}
 			break
 			case 'rate': case 'nilai': {
 				m.reply(`Rate Bot : *${Math.floor(Math.random() * 100)}%*`)
@@ -4367,7 +4305,6 @@ break
 │${setv} ${prefix}instagram (url)
 │${setv} ${prefix}tiktok (url)
 │${setv} ${prefix}tiktokmp3 (url)
-│${setv} ${prefix}facebook (url)
 │${setv} ${prefix}spotifydl (url)
 │${setv} ${prefix}mediafire (url)
 ╰─┬────❍
@@ -4453,7 +4390,6 @@ break
 │${setv} ${prefix}kerangajaib (text)
 │${setv} ${prefix}cekmati (nama lu)
 │${setv} ${prefix}ceksifat
-│${setv} ${prefix}cekkhodam (nama lu)
 │${setv} ${prefix}rate (reply pesan)
 │${setv} ${prefix}jodohku
 │${setv} ${prefix}jadian
@@ -4639,7 +4575,6 @@ break
 │${setv} ${prefix}instagram (url)
 │${setv} ${prefix}tiktok (url)
 │${setv} ${prefix}tiktokmp3 (url)
-│${setv} ${prefix}facebook (url)
 │${setv} ${prefix}spotifydl (url)
 │${setv} ${prefix}mediafire (url)
 ╰──────❍`)
@@ -4760,7 +4695,6 @@ break
 │${setv} ${prefix}kerangajaib (text)
 │${setv} ${prefix}cekmati (nama lu)
 │${setv} ${prefix}ceksifat
-│${setv} ${prefix}cekkhodam (nama lu)
 │${setv} ${prefix}rate (reply pesan)
 │${setv} ${prefix}jodohku
 │${setv} ${prefix}jadian
