@@ -1,3 +1,4 @@
+
 process.once('uncaughtException', console.error)
 process.once('unhandledRejection', console.error)
 
@@ -2728,30 +2729,39 @@ break
     if (!isLimit) return m.reply(global.mess.limit);
     if (!text && (!m.quoted || !m.quoted.text)) return m.reply(`Kirim/reply pesan *${prefix + command}* Teksnya`);
     m.react('⏳');
-    
+
     let queryText = text ? text : m.quoted.text;
     if (queryText.length >= 200) return m.reply('Max 200 Length!');
-    
+
     const tempDir = path.join(process.cwd(), 'database/temp');
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-    
+
     const outputPath = path.join(tempDir, `${time}-${m.sender}-bratvid.mp4`);
     const stickerPath = path.join(tempDir, `${time}-${m.sender}-bratvid.webp`);
-    
+
     try {
-        // Gunakan base URL tanpa parameter query berlebih
-        const apiUrl = `https://api.siputzx.my.id/api/m/brat?text=${encodeURIComponent(queryText)}`;
-        const response = await axios.get(apiUrl, { responseType: 'arraybuffer' });
+        // 🔥 API NEXRAY
+        const apiUrl = `https://api.nexray.eu.cc/maker/bratvid?text=${encodeURIComponent(queryText)}`;
+        const response = await axios.get(apiUrl, { 
+            responseType: 'arraybuffer',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Mobile Safari/537.36'
+            }
+        });
+        
+        // Simpan video
         fs.writeFileSync(outputPath, Buffer.from(response.data));
         
-        // Konversi ke stiker webp agar lebih ringan
+        // Konversi ke stiker webp
         execSync(`ffmpeg -i "${outputPath}" -vcodec libwebp -vf "scale=512:512:force_original_aspect_ratio=decrease,fps=15,pad=512:512:-1:-1:color=white@0.0" -loop 0 -an -vsync 0 "${stickerPath}"`);
         
         await naze.sendMessage(m.chat, { sticker: fs.readFileSync(stickerPath) }, { quoted: m });
         setLimit(m, db);
+        
     } catch (e) {
         console.error(e);
-        m.reply(global.mess.fail);
+        // Tampilkan error detail
+        m.reply(`❌ Gagal: ${e.message}`);
     } finally {
         [outputPath, stickerPath].forEach(p => { if (fs.existsSync(p)) fs.unlinkSync(p); });
     }
@@ -2940,8 +2950,67 @@ break
         m.reply('Gagal mencari video, coba kata kunci lain!')
     }
 }
-			
-			
+	break
+	case 'removebg': {
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!m.quoted || !/image/.test(m.quoted.mimetype)) return m.reply(`Reply gambar dengan caption *${prefix + command}*`)
+    m.react('⏳')
+    
+    let mediaPath = await naze.downloadAndSaveMediaMessage(m.quoted)
+    let resultPath = null
+    try {
+        const FormData = require('form-data')
+        const form = new FormData()
+        form.append('image', fs.createReadStream(mediaPath))
+        
+        const response = await axios.post('https://api.nexray.eu.cc/tools/removebg', form, {
+            headers: { ...form.getHeaders(), 'User-Agent': 'Mozilla/5.0' },
+            responseType: 'arraybuffer'
+        })
+        
+        resultPath = path.join(process.cwd(), 'database/temp', `${Date.now()}.png`)
+        fs.writeFileSync(resultPath, Buffer.from(response.data))
+        await m.reply({ image: { url: resultPath }, caption: '✅ Background berhasil dihapus!' })
+        setLimit(m, db)
+    } catch (e) {
+        console.error(e)
+        m.reply(`❌ Gagal: ${e.message}`)
+    } finally {
+        if (fs.existsSync(mediaPath)) fs.unlinkSync(mediaPath)
+        if (resultPath && fs.existsSync(resultPath)) fs.unlinkSync(resultPath)
+    }
+}		
+		break
+		case 'tofigura': {
+    if (!isLimit) return m.reply(global.mess.limit)
+    if (!m.quoted || !/image/.test(m.quoted.mimetype)) return m.reply(`Reply gambar dengan caption *${prefix + command}*`)
+    m.react('⏳')
+    
+    let media = await naze.downloadAndSaveMediaMessage(m.quoted)
+    let resultPath = null
+    try {
+        const FormData = require('form-data')
+        const form = new FormData()
+        form.append('image', fs.createReadStream(media))
+        
+        const response = await axios.post('https://api.nexray.eu.cc/ephoto/v1/figure', form, {
+            headers: { ...form.getHeaders(), 'User-Agent': 'Mozilla/5.0' },
+            responseType: 'arraybuffer'
+        })
+        
+        resultPath = path.join(process.cwd(), 'database/temp', `${Date.now()}.jpg`)
+        fs.writeFileSync(resultPath, Buffer.from(response.data))
+        await m.reply({ image: { url: resultPath }, caption: '✅ Efek figura berhasil!' })
+        setLimit(m, db)
+    } catch (e) {
+        console.error(e)
+        m.reply(`❌ Gagal: ${e.message}`)
+    } finally {
+        if (fs.existsSync(media)) fs.unlinkSync(media)
+        if (resultPath && fs.existsSync(resultPath)) fs.unlinkSync(resultPath)
+    }
+}
+break	
 			break
 			case 'pinterest': case 'pint': {
     if (!isLimit) return m.reply(global.mess.limit)
@@ -4320,7 +4389,6 @@ break
 ╰─┬────❍
 ╭─┴❍「 *SEARCH* 」❍
 │${setv} ${prefix}ytsearch (query)
-│${setv} ${prefix}spotify (query)
 │${setv} ${prefix}pinterest (query)
 │${setv} ${prefix}google (query)
 │${setv} ${prefix}gimage (query)
@@ -4333,7 +4401,6 @@ break
 │${setv} ${prefix}instagram (url)
 │${setv} ${prefix}tiktok (url)
 │${setv} ${prefix}tiktokmp3 (url)
-│${setv} ${prefix}spotifydl (url)
 │${setv} ${prefix}mediafire (url)
 ╰─┬────❍
 ╭─┴❍「 *TOOLS* 」❍
