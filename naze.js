@@ -3088,20 +3088,24 @@ break
 			
        	case 'ig': case 'instagram': case 'instadl': case 'igdown': case 'igdl': {
     if (!isLimit) return m.reply(global.mess.limit);
-    if (!text) return m.reply(`Example: ${prefix + command} url_instagram`);
+    if (!text) return m.reply(`Example: ${prefix + command} https://www.instagram.com/p/CxKjXK7oB3L/`);
     if (!text.includes('instagram.com')) return m.reply('Url Tidak Mengandung Result Dari Instagram!');
     m.react('⏳');
     try {
-        // 🔥 Impor librari instapro di sini
-        const { getMediaByCode } = require('instapro'); 
-        // Ekstrak shortcode (kode unik) dari URL Instagram
-        const shortcode = text.split('/').filter(part => part.length > 0).pop()?.split('?')[0];
-        if (!shortcode) throw new Error('Shortcode tidak ditemukan!');
-        // Panggil fungsi untuk mengambil data media berdasarkan shortcode
+        // Ekstrak shortcode dengan regex yang lebih handal
+        const regex = /instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/;
+        const match = text.match(regex);
+        if (!match || !match[1]) {
+            return m.reply('❌ Gagal mengekstrak shortcode. Pastikan URL adalah link postingan (bukan profil). Contoh: https://www.instagram.com/p/CxKjXK7oB3L/');
+        }
+        const shortcode = match[1];
+        
+        // Impor library instapro di sini
+        const { getMediaByCode } = require('instapro');
         const result = await getMediaByCode(shortcode);
+        
         if (result && result.url) {
-            // Kirim media (video atau gambar)
-            const caption = `✅ *Download Berhasil*`;
+            const caption = `✅ *Download Berhasil*\n📁 Source: instapro`;
             if (result.isVideo) {
                 await m.reply({ video: { url: result.url }, caption: caption });
             } else {
@@ -3109,7 +3113,7 @@ break
             }
             setLimit(m, db);
         } else {
-            m.reply('⚠️ Gagal mengambil media. Pastikan URL benar dan postingan tidak private.');
+            m.reply('⚠️ Gagal mengambil media. Pastikan postingan tidak private dan URL benar.');
         }
     } catch (e) {
         console.error(e);
