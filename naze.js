@@ -277,11 +277,6 @@ if (m.message && m.key.remoteJid !== 'status@broadcast') {
 if (m.isBot) return;
 if (db.users[m.sender]?.ban && !isCreator) return;
 
-// Filter Set Api Key
-if (cases.includes(command) && isCmd && (command !== 'setapikey')) {
-    const currentKey = global.APIKeys[global.APIs.naze];
-    if (currentKey === 'YOUR_API_KEY' || !currentKey.startsWith('nz-')) {
-        return m.reply('Silahkan Ganti Apikey yang ada\ndi File settings.js dengan apikey mu\nAgar semua fitur bisa digunakan dengan normal\n\nAmbil Key di : https://naze.biz.id/profile\nKemudian Gunakan Perintah\n.setapikey key_nya');
     }
 }
 		
@@ -679,24 +674,7 @@ if (cases.includes(command) && isCmd && (command !== 'setapikey')) {
 				const pesan = m.type === 'conversation' ? { extendedTextMessage: { text: m.msg, contextInfo: { isForwarded: true, forwardingScore: 1, quotedMessage: { conversation: `*Pesan Dari ${menfes[m.sender].nama ? menfes[m.sender].nama : 'Seseorang'}*`}, key: { remoteJid: '0@s.whatsapp.net', fromMe: false, participant: '0@s.whatsapp.net' }}}} : { [m.type]: m.msg }
 				await naze.relayMessage(menfes[m.sender].tujuan, pesan, {});
 			}
-			if (chat_ai[m.sender] && m.key.remoteJid !== 'status@broadcast') {
-				if (!/^(del((room|c|hat)ai)|>|<$)$/i.test(command) && budy) {
-					chat_ai[m.sender].push({ role: 'user', content: budy });
-					if (chat_ai[m.sender].length > 20) chat_ai[m.sender].shift();
-					let hasil;
-					try {
-						hasil = await fetchApi('/ai/chat4', {
-							messages: chat_ai[m.sender],
-							prompt: budy
-						}, { method: 'POST' });
-					} catch (e) {
-						hasil = 'Gagal Mengambil Respon, Website sedang gangguan'
-					}
-					const response = hasil?.result?.message || 'Maaf, saya tidak mengerti.';
-					chat_ai[m.sender].push({ role: 'assistant', content: response });
-					if (chat_ai[m.sender].length > 20) chat_ai[m.sender].shift();
-					await m.reply(response)
-				}
+
 			}
 		}
 		
@@ -1367,28 +1345,7 @@ if (cases.includes(command) && isCmd && (command !== 'setapikey')) {
 				} else m.reply(`Example: ${prefix + command} Asia/Jakarta`)
 			}
 			break
-			case 'setapikey': case 'setbotapikey': {
-				if (!isCreator) return m.reply(global.mess.owner)
-				if (!text) return m.reply('Mana apikey nya?')
-				if (args[0]?.toLowerCase() == 'neo') {
-					if (!args[1]?.startsWith('nsk_')) return m.reply('Apikey Tidak Valid!\nAmbil Apikey di : https://app.neosantara.xyz/api-keys');
-					let old_key = global.APIKeys[global.APIs.neosantara];
-					await updateSettings({
-						filePath: settingsPath,
-						neosantara: args[1].trim()
-					});
-					m.reply(`*Apikey telah di ganti dari ${old_key} menjadi ${q}*`)
-				} else {
-					if (!text.startsWith('nz-')) return m.reply('Apikey Tidak Valid!\nAmbil Apikey di : https://naze.biz.id/profile');
-					let old_key = global.APIKeys[global.APIs.naze];
-					await updateSettings({
-						filePath: settingsPath,
-						apikey: text.trim()
-					});
-					m.reply(`*Apikey telah di ganti dari ${old_key} menjadi ${q}*`)
-				}
-			}
-			break
+			
 			case 'addprefix': {
 				if (!isCreator) return m.reply(global.mess.owner)
 				if (text || m.quoted) {
@@ -2143,27 +2100,8 @@ Select Bot Settings:
 				delete menfes[anu.tujuan];
 				delete menfes[m.sender];
 			}
-			break
-			case 'cai': case 'roomai': case 'chatai': case 'autoai': {
-				if (m.isGroup) return m.reply(global.mess.private)
-				if (chat_ai[m.sender]) return m.reply(`Kamu Sedang Berada Di Sesi ${command}!`)
-				if (!text) return m.reply(`Example: ${prefix + command} halo ngab\nWith Prompt: ${prefix + command} halo ngab|Kamu adalah assisten yang siap membantu dalam hal apapun yang ku minta.\n\nUntuk Menghapus room: ${prefix + 'del' + command}`)
-				let [teks1, teks2] = text.split`|`
-				chat_ai[m.sender] = [{ role: 'system', content: teks2 || '' }, { role: 'user', content: text.split`|` ? teks1 : text || '' }]
-				let hasil = await fetchApi('/ai/chat4', {
-					messages: chat_ai[m.sender],
-					prompt: budy
-				}, { method: 'POST' });
-				const response = hasil?.result?.message || 'Maaf, saya tidak mengerti.';
-				chat_ai[m.sender].push({ role: 'assistant', content: response });
-				await m.reply(response)
-			}
-			break
-			case 'delcai': case 'delroomai': case 'delchatai': case 'delautoai': {
-				if (!chat_ai[m.sender]) return m.reply(`Kamu Tidak Sedang Berada Di Sesi ${command.split('del')[1]}!`)
-				m.reply(`Sukses Mengakhiri Sesi ${command.split('del')[1]}!`)
-				delete chat_ai[m.sender];
-			}
+			
+			
 			break
 			case 'jadibot': {
 				if (!isPremium) return m.reply(global.mess.prem)
