@@ -267,25 +267,23 @@ const naze = async (naze, m, msg, store) => {
 		}
 		
 		// Auto Read
-		if (m.message && m.key.remoteJid !== 'status@broadcast') {
-			if ((set.autoread && naze.public) || isCreator) {
-				naze.readMessages([m.key]);
-				if (set.log) console.log(chalk.black(chalk.whiteBright('[CHAT]:'), chalk.greenBright(`${locale_day} ${date} (${date_time})`), chalk.hex('#AF26EB')(m.key.id) + '\n' + chalk.hex('#00EAD3')(budy || m.type) + '\n' + chalk.cyanBright('[FROM]:'), chalk.yellowBright(m.pushName || (isCreator ? 'Bot' : 'Anonim')), chalk.hex('#FF449F')(m.sender.split('@')[0]), chalk.hex('#FF5700')(m.isGroup ? m.metadata.subject : m.chat.endsWith('@newsletter') ? 'Newsletter' : 'Private Chat'), chalk.blueBright('(' + m.chat + ')')));
-				else console.log(chalk.black(chalk.bgWhite('[CHAT]:'), chalk.bgGreen(`${locale_day} ${date} (${date_time})`), chalk.bgHex('#AF26EB')(m.key.id) + '\n' + chalk.bgHex('#00EAD3')(budy || m.type) + '\n' + chalk.bgCyanBright('[FROM]:'), chalk.bgYellow(m.pushName || (isCreator ? 'Bot' : 'Anonim')), chalk.bgHex('#FF449F')(m.sender), chalk.bgHex('#FF5700')(m.isGroup ? m.metadata.subject : m.chat.endsWith('@newsletter') ? 'Newsletter' : 'Private Chat'), chalk.bgBlue('(' + m.chat + ')')));
-			}
-		}
-		
-		// Filter Bot & Ban
-		if (m.isBot) return
-		if (db.users[m.sender]?.ban && !isCreator) return
-		
-		// Filter Set Api Key
-		if (cases.includes(command) && isCmd && (command !== 'setapikey')) {
-			const currentKey = global.APIKeys[global.APIs.naze];
-			if (currentKey === 'YOUR_API_KEY' || !currentKey.startsWith('nz-')) {
-				return m.reply('Silahkan Ganti Apikey yang ada\ndi File settings.js dengan apikey mu\nAgar semua fitur bisa digunakan dengan normal\n\nAmbil Key di : https://naze.biz.id/profile\nKemudian Gunakan Perintah\n.setapikey key_nya');
-			}
-		}
+if (m.message && m.key.remoteJid !== 'status@broadcast') {
+    if ((set.autoread && naze.public) || isCreator) {
+        naze.readMessages([m.key]);
+    } // <-- tutup if inner
+} // <-- tutup if outer
+
+// Filter Bot & Ban
+if (m.isBot) return;
+if (db.users[m.sender]?.ban && !isCreator) return;
+
+// Filter Set Api Key
+if (cases.includes(command) && isCmd && (command !== 'setapikey')) {
+    const currentKey = global.APIKeys[global.APIs.naze];
+    if (currentKey === 'YOUR_API_KEY' || !currentKey.startsWith('nz-')) {
+        return m.reply('Silahkan Ganti Apikey yang ada\ndi File settings.js dengan apikey mu\nAgar semua fitur bisa digunakan dengan normal\n\nAmbil Key di : https://naze.biz.id/profile\nKemudian Gunakan Perintah\n.setapikey key_nya');
+    }
+}
 		
 		// Mengetik & Anti Spam & Hit
 		if (naze.public && isCmd) {
