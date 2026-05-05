@@ -205,7 +205,7 @@ async function startNazeBot() {
 		process.exit(1)
 	}
 	
-	const level = pino({ level: 'silent' });
+	const level = pino({ level: 'error' });
 	const { version } = await fetchLatestWaWebVersion();
 	const { state, saveCreds } = await useMultiFileAuthState('nazedev');
 	const getMessage = async (key) => {
@@ -312,8 +312,9 @@ async function startNazeBot() {
 				naze.end(`Unknown DisconnectReason : ${reason}|${connection}`)
 			}
 		}
-		if (connection == 'open') {
-			console.log('Connected to : ' + JSON.stringify(naze.user, null, 2));
+	if (connection == 'open') {
+    console.log(chalk.green('[SUCCESS] Bot successfully connected!'));
+    // sisanya tetap
 			let botNumber = await naze.decodeJid(naze.user.id);
 			if (global.db?.set[botNumber] && !global.db?.set[botNumber]?.join) {
 				if (my.ch.length > 0 && my.ch.includes('@newsletter')) {
