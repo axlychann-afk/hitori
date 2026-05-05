@@ -316,7 +316,6 @@ async function startNazeBot() {
     console.clear(); // atau process.stdout.write('\x1Bc');
     console.log(chalk.green('[SUCCESS] Bot successfully connected!'));
     // ... kode lainnya tetap
-}
 			let botNumber = await naze.decodeJid(naze.user.id);
 			if (global.db?.set[botNumber] && !global.db?.set[botNumber]?.join) {
 				if (my.ch.length > 0 && my.ch.includes('@newsletter')) {
