@@ -277,6 +277,11 @@ if (m.message && m.key.remoteJid !== 'status@broadcast') {
 if (m.isBot) return;
 if (db.users[m.sender]?.ban && !isCreator) return;
 
+// Filter Set Api Key
+if (cases.includes(command) && isCmd && (command !== 'setapikey')) {
+    const currentKey = global.APIKeys[global.APIs.naze];
+    if (currentKey === 'YOUR_API_KEY' || !currentKey.startsWith('nz-')) {
+        return m.reply('Silahkan Ganti Apikey yang ada\ndi File settings.js dengan apikey mu\nAgar semua fitur bisa digunakan dengan normal\n\nAmbil Key di : https://naze.biz.id/profile\nKemudian Gunakan Perintah\n.setapikey key_nya');
     }
 }
 		
@@ -666,17 +671,17 @@ if (db.users[m.sender]?.ban && !isCreator) return;
 			}
 		}
 		
-		// Menfes & Room Ai
-		if (!m.isGroup && (!isCmd || isCreator)) {
-			if (menfes[m.sender] && m.key.remoteJid !== 'status@broadcast' && m.msg) {
-				m.react('✈');
-				if (m.type !== 'conversation') m.msg.contextInfo = { isForwarded: true, forwardingScore: 1, quotedMessage: { conversation: `*Pesan Dari ${menfes[m.sender].nama ? menfes[m.sender].nama : 'Seseorang'}*`}, key: { remoteJid: '0@s.whatsapp.net', fromMe: false, participant: '0@s.whatsapp.net' }}
-				const pesan = m.type === 'conversation' ? { extendedTextMessage: { text: m.msg, contextInfo: { isForwarded: true, forwardingScore: 1, quotedMessage: { conversation: `*Pesan Dari ${menfes[m.sender].nama ? menfes[m.sender].nama : 'Seseorang'}*`}, key: { remoteJid: '0@s.whatsapp.net', fromMe: false, participant: '0@s.whatsapp.net' }}}} : { [m.type]: m.msg }
-				await naze.relayMessage(menfes[m.sender].tujuan, pesan, {});
-			}
-
-			}
-		}
+	// Menfes & Room Ai
+if (!m.isGroup && (!isCmd || isCreator)) {
+    // Menfess (tanpa API)
+    if (menfes[m.sender] && m.key.remoteJid !== 'status@broadcast' && m.msg) {
+        m.react('✈');
+        if (m.type !== 'conversation') m.msg.contextInfo = { isForwarded: true, forwardingScore: 1, quotedMessage: { conversation: `*Pesan Dari ${menfes[m.sender].nama ? menfes[m.sender].nama : 'Seseorang'}*`}, key: { remoteJid: '0@s.whatsapp.net', fromMe: false, participant: '0@s.whatsapp.net' }}
+        const pesan = m.type === 'conversation' ? { extendedTextMessage: { text: m.msg, contextInfo: { isForwarded: true, forwardingScore: 1, quotedMessage: { conversation: `*Pesan Dari ${menfes[m.sender].nama ? menfes[m.sender].nama : 'Seseorang'}*`}, key: { remoteJid: '0@s.whatsapp.net', fromMe: false, participant: '0@s.whatsapp.net' }}}} : { [m.type]: m.msg }
+        await naze.relayMessage(menfes[m.sender].tujuan, pesan, {});
+    }
+    // Bagian chat_ai (dihapus)
+}
 		
 		// Afk
 		let mentionUser = [...new Set([...(m.mentionedJid || []), ...(m.quoted ? [m.quoted.sender] : [])])]
@@ -1345,7 +1350,28 @@ if (db.users[m.sender]?.ban && !isCreator) return;
 				} else m.reply(`Example: ${prefix + command} Asia/Jakarta`)
 			}
 			break
-			
+			case 'setapikey': case 'setbotapikey': {
+				if (!isCreator) return m.reply(global.mess.owner)
+				if (!text) return m.reply('Mana apikey nya?')
+				if (args[0]?.toLowerCase() == 'neo') {
+					if (!args[1]?.startsWith('nsk_')) return m.reply('Apikey Tidak Valid!\nAmbil Apikey di : https://app.neosantara.xyz/api-keys');
+					let old_key = global.APIKeys[global.APIs.neosantara];
+					await updateSettings({
+						filePath: settingsPath,
+						neosantara: args[1].trim()
+					});
+					m.reply(`*Apikey telah di ganti dari ${old_key} menjadi ${q}*`)
+				} else {
+					if (!text.startsWith('nz-')) return m.reply('Apikey Tidak Valid!\nAmbil Apikey di : https://naze.biz.id/profile');
+					let old_key = global.APIKeys[global.APIs.naze];
+					await updateSettings({
+						filePath: settingsPath,
+						apikey: text.trim()
+					});
+					m.reply(`*Apikey telah di ganti dari ${old_key} menjadi ${q}*`)
+				}
+			}
+			break
 			case 'addprefix': {
 				if (!isCreator) return m.reply(global.mess.owner)
 				if (text || m.quoted) {
@@ -2100,7 +2126,7 @@ Select Bot Settings:
 				delete menfes[anu.tujuan];
 				delete menfes[m.sender];
 			}
-			
+		
 			
 			break
 			case 'jadibot': {
