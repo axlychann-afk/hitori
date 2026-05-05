@@ -276,10 +276,6 @@ if (m.message && m.key.remoteJid !== 'status@broadcast') {
 // Filter Bot & Ban
 if (m.isBot) return;
 if (db.users[m.sender]?.ban && !isCreator) return;
-
-
-    }
-}
 		
 		// Mengetik & Anti Spam & Hit
 		if (naze.public && isCmd) {
@@ -1346,28 +1342,7 @@ if (!m.isGroup && (!isCmd || isCreator)) {
 				} else m.reply(`Example: ${prefix + command} Asia/Jakarta`)
 			}
 			break
-			case 'setapikey': case 'setbotapikey': {
-				if (!isCreator) return m.reply(global.mess.owner)
-				if (!text) return m.reply('Mana apikey nya?')
-				if (args[0]?.toLowerCase() == 'neo') {
-					if (!args[1]?.startsWith('nsk_')) return m.reply('Apikey Tidak Valid!\nAmbil Apikey di : https://app.neosantara.xyz/api-keys');
-					let old_key = global.APIKeys[global.APIs.neosantara];
-					await updateSettings({
-						filePath: settingsPath,
-						neosantara: args[1].trim()
-					});
-					m.reply(`*Apikey telah di ganti dari ${old_key} menjadi ${q}*`)
-				} else {
-					if (!text.startsWith('nz-')) return m.reply('Apikey Tidak Valid!\nAmbil Apikey di : https://naze.biz.id/profile');
-					let old_key = global.APIKeys[global.APIs.naze];
-					await updateSettings({
-						filePath: settingsPath,
-						apikey: text.trim()
-					});
-					m.reply(`*Apikey telah di ganti dari ${old_key} menjadi ${q}*`)
-				}
-			}
-			break
+			
 			case 'addprefix': {
 				if (!isCreator) return m.reply(global.mess.owner)
 				if (text || m.quoted) {
