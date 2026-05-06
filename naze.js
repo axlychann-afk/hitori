@@ -2805,29 +2805,31 @@ break
 			
 			// Ai Menu
 			case 'ai': case 'google': case 'bard': case 'gemini': {
-    if (!text) return m.reply(`Example: ${prefix + command} halo`)
-    m.react('⏳')
+    if (!isLimit) return m.reply(global.mess.limit);
+    if (!text) return m.reply(`Example: ${prefix + command} halo`);
+    m.react('⏳');
     try {
-        // 🔥 API baru dari harzrestapi
-        const apiUrl = `https://api.harzrestapi.web.id/api/v2/ai/ch-at?apikey=FREE&q=${encodeURIComponent(text)}`
-        const { data } = await axios.get(apiUrl)
+        // 🔥 API dari harzrestapi
+        const apiUrl = `https://api.harzrestapi.web.id/api/v2/ai/ch-at?apikey=FREE&q=${encodeURIComponent(text)}`;
+        const { data } = await axios.get(apiUrl);
         
-        // Sesuaikan path response sesuai struktur asli API
-        const response = data?.result || data?.response || data?.data || data
+        // ✅ Ambil jawaban dari properti 'answer' (langsung) atau dari 'result.answer'
+        const response = data?.answer || data?.result?.answer;
         
-        if (!response) throw new Error('empty')
-        m.reply(response)
+        if (!response) throw new Error('empty');
+        m.reply(response);
+        setLimit(m, db);
     } catch (e) {
-        console.log(e)
+        console.error(e);
         m.reply(pickRandom([
             'Maaf, AI sedang bermasalah. Coba lagi nanti.',
             'Tidak dapat terhubung ke server AI.',
             'Layanan AI sedang sibuk.',
             'Gagal mendapatkan respons dari AI.'
-        ]))
+        ]));
     }
 }
-break
+break;
 			case 'deepseek': case 'r1': {
     if (!isLimit) return m.reply(global.mess.limit)
     if (!text) return m.reply('Halo! Ada yang bisa dibantu hari ini?')
