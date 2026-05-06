@@ -3171,37 +3171,56 @@ break
 }
 break
 case 'tiktok': case 'tiktokdown': case 'ttdown': case 'ttdl': case 'tt': case 'ttmp4': case 'ttvideo': case 'tiktokmp4': case 'tiktokvideo': {
-    if (!isLimit) return m.reply(global.mess.limit)
-    if (!text) return m.reply(`Example: ${prefix + command} url_tiktok`)
-    if (!text.includes('tiktok.com')) return m.reply('Url Tidak Mengandung Result Dari Tiktok!')
-    m.react('⏳')
+    if (!isLimit) return m.reply(global.mess.limit);
+    if (!text) return m.reply(`Example: ${prefix + command} url_tiktok`);
+    if (!text.includes('tiktok.com')) return m.reply('Url Tidak Mengandung Result Dari Tiktok!');
+    m.react('⏳');
     
     try {
-        // 🔥 API baru dari fromscratch.web.id
-        const apiUrl = `https://api.fromscratch.web.id/v1/api/down/tiktok?url=${encodeURIComponent(text)}`
-        const { data } = await axios.get(apiUrl)
+        // 🔥 API dari nexray.eu.cc
+        const apiUrl = `https://api.nexray.eu.cc/downloader/tiktok?url=${encodeURIComponent(text)}`;
+        const { data } = await axios.get(apiUrl);
         
-        // Cek respons
-        if (data.status === 200 && data.data && data.data.no_watermark) {
-            const videoUrl = data.data.no_watermark // video tanpa watermark
-            const title = data.data.title || 'TikTok Video'
-            const source = data.source || 'fromscratch'
+        if (data.status === true && data.result) {
+            const result = data.result;
             
-            await m.reply({
-                video: { url: videoUrl },
-                caption: `*📍Title:* ${title}\n*👤Source:* ${source}`,
-                mimetype: 'video/mp4'
-            })
-            setLimit(m, db)
-        } else {
-            throw new Error('Gagal mengambil video')
+            // ✅ Prioritas: Video tanpa watermark
+            const videoUrl = result.video_no_watermark || result.video_hd || result.video;
+            if (videoUrl) {
+                await m.reply({
+                    video: { url: videoUrl },
+                    caption: `*📍Title:* ${result.title || '-'}\n*⏱️Duration:* ${result.duration || '-'}\n*👤Author:* ${result.author?.nickname || result.author?.unique_id || '-'}\n*📊Stats:* ${result.stats?.views || 0} views, ${result.stats?.likes || 0} likes`,
+                    mimetype: 'video/mp4'
+                });
+                setLimit(m, db);
+                return;
+            }
+            
+            // ✅ Alternatif: Koleksi gambar (carousel)
+            if (result.data && Array.isArray(result.data) && result.data.length > 0) {
+                const caption = `*📍Title:* ${result.title || '-'}\n*👤Author:* ${result.author?.nickname || result.author?.unique_id || '-'}\n*📊Stats:* ${result.stats?.views || 0} views, ${result.stats?.likes || 0} likes`;
+                if (typeof naze.sendAlbumMessage === 'function' && result.data.length > 1) {
+                    const album = result.data.map(url => ({ image: { url } }));
+                    await naze.sendAlbumMessage(m.chat, { album, caption }, { quoted: m });
+                } else {
+                    for (const url of result.data) {
+                        await m.reply({ image: { url }, caption });
+                        await sleep(1000);
+                    }
+                }
+                setLimit(m, db);
+                return;
+            }
+            
+            throw new Error('Tidak ada media yang ditemukan');
         }
+        throw new Error('Gagal memproses link TikTok');
     } catch (e) {
-        console.error(e)
-        m.reply(global.mess.fail)
+        console.error(e);
+        m.reply(global.mess.fail);
     }
 }
-break
+break;
 		case 'ttmp3': case 'tiktokmp3': case 'ttaudio': case 'tiktokaudio': {
     if (!isLimit) return m.reply(global.mess.limit)
     if (!text) return m.reply(`Example: ${prefix + command} url_tiktok`)
