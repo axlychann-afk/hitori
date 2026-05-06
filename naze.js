@@ -2882,19 +2882,33 @@ break
         const apiUrl = `https://api.harzrestapi.web.id/api/v2/search/youtube?apikey=FREE&q=${encodeURIComponent(text)}`;
         const { data: apiResponse } = await axios.get(apiUrl);
         
-        if (apiResponse.status !== 200 || !apiResponse.data || apiResponse.data.length === 0) throw new Error('empty');
+        // ✅ Cek status 200 dan data array tidak kosong
+        if (apiResponse.status !== 200 || !apiResponse.data || apiResponse.data.length === 0) {
+            throw new Error('empty');
+        }
         
         const hasil = pickRandom(apiResponse.data);
-        const teksnya = `*📍Title:* ${hasil.title || 'Tidak tersedia'}\n*✏Description:* ${hasil.description || 'Tidak tersedia'}\n*🌟Channel:* ${hasil.author || 'Tidak tersedia'}\n*⏳Duration:* ${hasil.duration || 'Tidak tersedia'}\n*👁️Views:* ${hasil.viewCount || 'Tidak tersedia'}\n*📅Upload:* ${hasil.publishedTime || 'Tidak tersedia'}\n*🔎Source:* ${hasil.url || 'Tidak tersedia'}\n\n_note : jika ingin mendownload silahkan_\n_pilih ${prefix}ytmp3 url_video atau ${prefix}ytmp4 url_video_`;
+        // ✅ Properti sesuai contoh respons
+        const teksnya = `*📍Title:* ${hasil.title || 'Tidak tersedia'}
+*✏Description:* ${hasil.description || 'Tidak tersedia'}
+*🌟Channel:* ${hasil.author || 'Tidak tersedia'}
+*⏳Duration:* ${hasil.duration || 'Tidak tersedia'}
+*👁️Views:* ${hasil.viewCount || 'Tidak tersedia'}
+*📅Upload:* ${hasil.publishedTime || 'Tidak tersedia'}
+*🔎Source:* ${hasil.url || 'Tidak tersedia'}
+
+_note : jika ingin mendownload silahkan_
+_pilih ${prefix}ytmp3 url_video atau ${prefix}ytmp4 url_video_`;
         
         await m.reply({ image: { url: hasil.thumbnail }, caption: teksnya });
         setLimit(m, db);
+        
     } catch (e) {
-        console.log(e);
+        console.error(e);
         m.reply('Gagal mencari video, coba kata kunci lain!');
     }
 }
-break
+break;
 	case 'removebg': {
     if (!isLimit) return m.reply(global.mess.limit)
     if (!m.quoted || !/image/.test(m.quoted.mimetype)) return m.reply(`Reply gambar dengan caption *${prefix + command}*`)
