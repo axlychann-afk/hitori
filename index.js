@@ -28,24 +28,19 @@ const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Semua log awal dinonaktifkan
+// Nonaktifkan semua log awal
 const print = () => {};
 const pairingCode = process.argv.includes('--qr') ? false : process.argv.includes('--pairing-code') || global.pairing_code;
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-const question = (text) => new Promise((resolve) => rl.question(text, resolve))
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+const question = (text) => new Promise((resolve) => rl.question(text, resolve));
 const tempDir = path.join(__dirname, 'database/temp');
 const time_now = new Date();
 const time_end = 60000 - (time_now.getSeconds() * 1000 + time_now.getMilliseconds());
 let pairingStarted = false;
 let phoneNumber;
 
-const userInfoSyt = () => {
-    try {
-        return os.userInfo().username
-    } catch (e) {
-        return process.env.USER || process.env.USERNAME || 'unknown';
-    }
-}
+// Simpan referensi instance aktif untuk ditutup sebelum reconnect
+let activeNazeInstance = null;
 
 try {
     dns.setServers(['8.8.8.8', '1.1.1.1']);
@@ -61,23 +56,23 @@ global.fetchApi = async (endpoint = '/', data = {}, options = {}) => {
                     return reject(new Error(`[Fetch Error] Parameter { api: ${options.api} } tidak terdaftar. Harap gunakan angka 1 hingga ${apiList.length}.`));
                 }
             }
-            const apiName = typeof options.api === 'number' ? apiList[options.api - 1] : options.name
-            const base = apiName ? (global.APIs[apiName] || apiName) : global.APIs.naze
+            const apiName = typeof options.api === 'number' ? apiList[options.api - 1] : options.name;
+            const base = apiName ? (global.APIs[apiName] || apiName) : global.APIs.naze;
             const apikey = global.APIKeys[base] || '';
-            let method = (options.method || 'GET').toUpperCase()
-            let url = base + endpoint 
-            let payload = null
-            let headers = options.headers || { 'user-agent': 'Mozilla/5.0 (Linux; Android 15)' }
+            let method = (options.method || 'GET').toUpperCase();
+            let url = base + endpoint;
+            let payload = null;
+            let headers = options.headers || { 'user-agent': 'Mozilla/5.0 (Linux; Android 15)' };
             const isForm = options.form || data instanceof FormData || (data && typeof data.getHeaders === 'function');
             if (isForm) {
-                payload = data
-                method = 'POST'
-                headers = { ...(options.headers?.['Authorization'] ? {} : { apikey }), ...headers, ...data.getHeaders() }
+                payload = data;
+                method = 'POST';
+                headers = { ...(options.headers?.['Authorization'] ? {} : { apikey }), ...headers, ...data.getHeaders() };
             } else if (method !== 'GET') {
-                payload = { ...data, ...(options.headers?.['Authorization'] ? {} : { apikey }) }
-                headers['content-type'] = 'application/json'
+                payload = { ...data, ...(options.headers?.['Authorization'] ? {} : { apikey }) };
+                headers['content-type'] = 'application/json';
             } else {
-                url += '?' + new URLSearchParams({ ...data, apikey }).toString()
+                url += '?' + new URLSearchParams({ ...data, apikey }).toString();
             }
             const res = await axios({
                 method, url, data: payload,
@@ -85,35 +80,33 @@ global.fetchApi = async (endpoint = '/', data = {}, options = {}) => {
                 responseType: options.stream ? 'stream' : (options.buffer ? 'arraybuffer' : options.responseType || options.type || 'json'),
             });
             if (options.stream) {
-                let ext = options.ext
+                let ext = options.ext;
                 if (typeof options.stream !== 'string' && !ext) {
-                    const contentDisp = res.headers['content-disposition']
-                    const contentType = res.headers['content-type']
+                    const contentDisp = res.headers['content-disposition'];
+                    const contentType = res.headers['content-type'];
                     if (contentDisp && contentDisp.includes('filename=')) {
-                        const match = contentDisp.match(/filename="?([^"]+)"?/)
-                        if (match && match[1]) {
-                            ext = match[1].split('.').pop()
-                        }
+                        const match = contentDisp.match(/filename="?([^"]+)"?/);
+                        if (match && match[1]) ext = match[1].split('.').pop();
                     }
                     if (!ext && contentType) {
-                        ext = contentType.split('/')[1]?.split(';')[0]
-                        if (ext === 'jpeg') ext = 'jpg'
+                        ext = contentType.split('/')[1]?.split(';')[0];
+                        if (ext === 'jpeg') ext = 'jpg';
                     }
-                    ext = ext || 'tmp'
+                    ext = ext || 'tmp';
                 }
-                let streamPath = typeof options.stream === 'string' ? options.stream : path.join(process.cwd(), 'database/temp', 'temp-' + Date.now() + '.' + ext)
-                const writeStream = fs.createWriteStream(streamPath)
-                res.data.pipe(writeStream)
-                writeStream.on('finish', () => resolve(streamPath))
-                writeStream.on('error', reject)
+                let streamPath = typeof options.stream === 'string' ? options.stream : path.join(process.cwd(), 'database/temp', 'temp-' + Date.now() + '.' + ext);
+                const writeStream = fs.createWriteStream(streamPath);
+                res.data.pipe(writeStream);
+                writeStream.on('finish', () => resolve(streamPath));
+                writeStream.on('error', reject);
             } else {
-                resolve(options.buffer ? Buffer.from(res.data) : res.data)
+                resolve(options.buffer ? Buffer.from(res.data) : res.data);
             }
         } catch (e) {
-            reject(e)
+            reject(e);
         }
-    })
-}
+    });
+};
 
 const storeDB = dataBase(global.tempatStore);
 const database = dataBase(global.tempatDB);
@@ -131,9 +124,19 @@ assertInstalled(process.platform === 'win32' ? 'where ffmpeg' : 'command -v ffmp
 server.listen(PORT, () => {});
 
 async function startNazeBot() {
+    // 🔥 TUTUP INSTANCE LAMA SEBELUM MEMBUAT BARU (mencegah penumpukan listener)
+    if (activeNazeInstance) {
+        try {
+            await activeNazeInstance.end();
+        } catch (e) {
+            // Abaikan error saat menutup
+        }
+        activeNazeInstance = null;
+    }
+
     try {
-        const loadData = await database.read()
-        const storeLoadData = await storeDB.read()
+        const loadData = await database.read();
+        const storeLoadData = await storeDB.read();
         if (!loadData || Object.keys(loadData).length === 0) {
             global.db = {
                 hit: {},
@@ -147,10 +150,10 @@ async function startNazeBot() {
                 premium: [],
                 sewa: [],
                 ...(loadData || {}),
-            }
-            await database.write(global.db)
+            };
+            await database.write(global.db);
         } else {
-            global.db = loadData
+            global.db = loadData;
         }
         if (!storeLoadData || Object.keys(storeLoadData).length === 0) {
             global.store = {
@@ -159,43 +162,40 @@ async function startNazeBot() {
                 messages: {},
                 groupMetadata: {},
                 ...(storeLoadData || {}),
-            }
-            await storeDB.write(global.store)
+            };
+            await storeDB.write(global.store);
         } else {
-            global.store = storeLoadData
+            global.store = storeLoadData;
         }
-        
+
         global.loadMessage = function (remoteJid, id) {
             const messages = store.messages?.[remoteJid]?.array;
             if (!messages) return null;
             return messages.find(msg => msg?.key?.id === id) || null;
-        }
-        
+        };
+
         if (!global._dbInterval) {
             global._dbInterval = setInterval(async () => {
-                if (global.db) await database.write(global.db)
-                if (global.store) await storeDB.write(global.store)
-            }, 30 * 1000)
+                if (global.db) await database.write(global.db);
+                if (global.store) await storeDB.write(global.store);
+            }, 30 * 1000);
         }
     } catch (e) {
-        // hanya print error ke stderr jika diperlukan
-        console.error(e)
-        process.exit(1)
+        console.error(e);
+        process.exit(1);
     }
-    
+
     const level = pino({ level: 'silent' });
     const { version } = await fetchLatestWaWebVersion();
     const { state, saveCreds } = await useMultiFileAuthState('nazedev');
     const getMessage = async (key) => {
         if (global.store) {
             const msg = await global.loadMessage(key.remoteJid, key.id);
-            return msg?.message || ''
+            return msg?.message || '';
         }
-        return {
-            conversation: 'Halo Saya Naze Bot'
-        }
-    }
-    
+        return { conversation: 'Halo Saya Naze Bot' };
+    };
+
     const naze = WAConnection({
         version,
         logger: level,
@@ -221,28 +221,30 @@ async function startNazeBot() {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, level),
         },
-    })
-    
+    });
+
+    activeNazeInstance = naze; // simpan referensi
+
     if (pairingCode && !phoneNumber && !naze.authState.creds.registered) {
         async function getPhoneNumber() {
-            phoneNumber = global.number_bot ? global.number_bot : process.env.BOT_NUMBER || await question('Please type your WhatsApp number : ');
-            phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
+            phoneNumber = global.number_bot ? global.number_bot : process.env.BOT_NUMBER || (await question('Please type your WhatsApp number : '));
+            phoneNumber = phoneNumber.replace(/[^0-9]/g, '');
             if (!parsePhoneNumber('+' + phoneNumber).valid && phoneNumber.length < 6) {
                 console.error(chalk.redBright('Start with your Country WhatsApp code, Example : 62xxx'));
-                await getPhoneNumber()
+                await getPhoneNumber();
             }
         }
         (async () => {
             await getPhoneNumber();
             exec('rm -rf ./nazedev/*');
             console.log(chalk.blue('Phone number captured. Waiting for connection...'));
-        })()
+        })();
     }
-    
-    await Solving(naze, global.store)
-    
-    naze.ev.on('creds.update', saveCreds)
-    
+
+    await Solving(naze, global.store);
+
+    naze.ev.on('creds.update', saveCreds);
+
     naze.ev.on('connection.update', async (update) => {
         const { qr, connection, lastDisconnect, isNewLogin, receivedPendingNotifications } = update;
         if ((connection === 'connecting' || !!qr) && pairingCode && phoneNumber && !naze.authState.creds.registered && !pairingStarted) {
@@ -250,79 +252,79 @@ async function startNazeBot() {
                 pairingStarted = true;
                 let code = await naze.requestPairingCode(phoneNumber);
                 console.log(chalk.blue('Your Pairing Code :'), chalk.green(code), chalk.yellow('(expires in 15 sec)'));
-            }, 3000)
+            }, 3000);
         }
         if (connection === 'close') {
-            const reason = new Boom(lastDisconnect?.error)?.output.statusCode
+            const reason = new Boom(lastDisconnect?.error)?.output.statusCode;
             if (reason === DisconnectReason.connectionLost ||
                 reason === DisconnectReason.connectionClosed ||
                 reason === DisconnectReason.restartRequired ||
                 reason === DisconnectReason.timedOut ||
                 reason === DisconnectReason.badSession) {
                 console.log(chalk.yellow('Connection lost, restarting...'));
-                startNazeBot()
+                startNazeBot(); // reconnect
             } else if (reason === DisconnectReason.loggedOut) {
                 console.log(chalk.red('Logged out, delete session and scan again.'));
-                exec('rm -rf ./nazedev/*')
-                process.exit(0)
+                exec('rm -rf ./nazedev/*');
+                process.exit(0);
             } else if (reason === DisconnectReason.forbidden) {
                 console.log(chalk.red('Connection Failure, scan again.'));
-                exec('rm -rf ./nazedev/*')
-                process.exit(1)
+                exec('rm -rf ./nazedev/*');
+                process.exit(1);
             } else if (reason === DisconnectReason.multideviceMismatch) {
                 console.log(chalk.red('Scan again.'));
-                exec('rm -rf ./nazedev/*')
-                process.exit(0)
+                exec('rm -rf ./nazedev/*');
+                process.exit(0);
             } else if (reason !== DisconnectReason.connectionReplaced) {
-                naze.end(`Unknown DisconnectReason : ${reason}|${connection}`)
+                naze.end(`Unknown DisconnectReason : ${reason}|${connection}`);
             }
         }
         if (connection == 'open') {
-            console.clear(); // bersihkan terminal
+            console.clear();
             console.log(chalk.green('[SUCCESS] Bot successfully connected!'));
             let botNumber = await naze.decodeJid(naze.user.id);
             if (global.db?.set[botNumber] && !global.db?.set[botNumber]?.join) {
                 if (my.ch && my.ch.length > 0 && my.ch.includes('@newsletter')) {
-                    if (my.ch) await naze.newsletterMsg(my.ch, { type: 'follow' }).catch(e => {})
-                    db.set[botNumber].join = true
+                    if (my.ch) await naze.newsletterMsg(my.ch, { type: 'follow' }).catch(e => {});
+                    db.set[botNumber].join = true;
                 }
             }
         }
         if (qr && !pairingCode) {
-            qrcode.generate(qr, { small: true })
+            qrcode.generate(qr, { small: true });
             app.use('/qr', async (req, res) => {
-                res.setHeader('content-type', 'image/png')
-                res.end(await toBuffer(qr))
+                res.setHeader('content-type', 'image/png');
+                res.end(await toBuffer(qr));
             });
         }
-        if (isNewLogin) console.log(chalk.green('[INFO] New device login detected...'))
+        if (isNewLogin) console.log(chalk.green('[INFO] New device login detected...'));
         if (receivedPendingNotifications == 'true') {
-            console.log(chalk.green('[INFO] Please wait about 1 minute...'))
-            naze.ev.flush()
+            console.log(chalk.green('[INFO] Please wait about 1 minute...'));
+            naze.ev.flush();
         }
     });
-    
+
     naze.ev.on('call', async (call) => {
         let botNumber = await naze.decodeJid(naze.user.id);
         if (global.db?.set[botNumber]?.anticall) {
             for (let id of call) {
                 if (id.status === 'offer') {
-                    let msg = await naze.sendMessage(id.from, { text: `Saat Ini, Kami Tidak Dapat Menerima Panggilan ${id.isVideo ? 'Video' : 'Suara'}.\nJika @${id.from.split('@')[0]} Memerlukan Bantuan, Silakan Hubungi Owner :)`, mentions: [id.from]});
+                    let msg = await naze.sendMessage(id.from, { text: `Saat Ini, Kami Tidak Dapat Menerima Panggilan ${id.isVideo ? 'Video' : 'Suara'}.\nJika @${id.from.split('@')[0]} Memerlukan Bantuan, Silakan Hubungi Owner :)`, mentions: [id.from] });
                     await naze.sendContact(id.from, global.owner, msg);
-                    await naze.rejectCall(id.id, id.from)
+                    await naze.rejectCall(id.id, id.from);
                 }
             }
         }
     });
-    
+
     naze.ev.on('messages.upsert', async (message) => {
         await MessagesUpsert(naze, message, global.store);
     });
-    
+
     naze.ev.on('group-participants.update', async (update) => {
         await GroupParticipantsUpdate(naze, update, global.store);
     });
-    
+
     naze.ev.on('groups.update', (update) => {
         for (const n of update) {
             if (global.store.groupMetadata[n.id]) {
@@ -330,21 +332,21 @@ async function startNazeBot() {
             } else global.store.groupMetadata[n.id] = n;
         }
     });
-    
+
     naze.ev.on('presence.update', (update) => {
         const { id, presences } = update;
         store.presences[id] = global.store.presences?.[id] || {};
         Object.assign(global.store.presences[id], presences);
     });
-    
-    // Reset Limit & Backup - nonaktifkan log
+
+    // Reset Limit & Backup (nonaktifkan log)
     cron.schedule('00 00 * * *', async () => {
         cmdDel(global.db.hit);
-        let user = Object.keys(global.db.users)
+        let user = Object.keys(global.db.users);
         let botNumber = await naze.decodeJid(naze.user.id);
         for (let jid of user) {
-            const limitUser = global.db.users[jid].vip ? global.limit.vip : checkStatus(jid, global.db.premium) ? global.limit.premium : global.limit.free
-            if (global.db.users[jid].limit < limitUser) global.db.users[jid].limit = limitUser
+            const limitUser = global.db.users[jid].vip ? global.limit.vip : checkStatus(jid, global.db.premium) ? global.limit.premium : global.limit.free;
+            if (global.db.users[jid].limit < limitUser) global.db.users[jid].limit = limitUser;
         }
         if (global.db?.set[botNumber].autobackup) {
             let datanya = './database/' + global.tempatDB;
@@ -354,21 +356,21 @@ async function startNazeBot() {
             }
             for (let o of ownerNumber) {
                 try {
-                    await naze.sendMessage(o, { document: fs.readFileSync(datanya), mimetype: 'application/json', fileName: new Date().toISOString().replace(/[:.]/g, '-') + '_database.json' })
+                    await naze.sendMessage(o, { document: fs.readFileSync(datanya), mimetype: 'application/json', fileName: new Date().toISOString().replace(/[:.]/g, '-') + '_database.json' });
                 } catch (e) {}
             }
         }
     }, {
         scheduled: true,
-        timezone: global.timezone
+        timezone: global.timezone,
     });
-    
+
     // Waktu Sholat
     if (!global.intervalSholat) global.intervalSholat = null;
     if (!global.waktusholat) global.waktusholat = {};
-    if (global.intervalSholat) clearInterval(global.intervalSholat); 
+    if (global.intervalSholat) clearInterval(global.intervalSholat);
     setTimeout(() => {
-        global.intervalSholat = setInterval(async() => {
+        global.intervalSholat = setInterval(async () => {
             const sekarang = moment.tz(global.timezone);
             const jamSholat = sekarang.format('HH:mm');
             const hariIni = sekarang.format('YYYY-MM-DD');
@@ -376,40 +378,43 @@ async function startNazeBot() {
             if (detik !== '00') return;
             for (const [sholat, waktu] of Object.entries(global.jadwalSholat)) {
                 if (jamSholat === waktu && global.waktusholat[sholat] !== hariIni) {
-                    global.waktusholat[sholat] = hariIni
+                    global.waktusholat[sholat] = hariIni;
                     for (const [idnya, settings] of Object.entries(global.db.groups)) {
                         if (settings.waktusholat) {
-                            await naze.sendMessage(idnya, { text: `Waktu *${sholat}* telah tiba, ambilah air wudhu dan segeralah shalat🙂.\n\n*${waktu.slice(0, 5)}*\n_untuk wilayah ${global.timezone} dan sekitarnya._` }, { ephemeralExpiration: store?.messages[idnya]?.array?.slice(-1)[0]?.metadata?.ephemeralDuration || 0 }).catch(e => {})
+                            await naze.sendMessage(idnya, { text: `Waktu *${sholat}* telah tiba, ambilah air wudhu dan segeralah shalat🙂.\n\n*${waktu.slice(0, 5)}*\n_untuk wilayah ${global.timezone} dan sekitarnya._` }, { ephemeralExpiration: store?.messages[idnya]?.array?.slice(-1)[0]?.metadata?.ephemeralDuration || 0 }).catch(e => {});
                         }
                     }
                 }
             }
-        }, 60000)
+        }, 60000);
     }, time_end);
-    
+
     if (!global._dbPresence) {
         global._dbPresence = setInterval(async () => {
-            if (naze?.user?.id) await naze.sendPresenceUpdate('available', naze.decodeJid(naze.user.id)).catch(e => {})
+            if (naze?.user?.id) await naze.sendPresenceUpdate('available', naze.decodeJid(naze.user.id)).catch(e => {});
         }, 10 * 60 * 1000);
     }
 
-    return naze
+    return naze;
 }
 
-startNazeBot()
+startNazeBot();
 
-// Process Exit - nonaktifkan log
+// Process Exit - bersihkan penyimpanan
 const cleanup = async (signal) => {
-    if (global.db) await database.write(global.db)
-    if (global.store) await storeDB.write(global.store)
+    if (global.db) await database.write(global.db);
+    if (global.store) await storeDB.write(global.store);
+    if (activeNazeInstance) {
+        try { await activeNazeInstance.end(); } catch (e) {}
+    }
     server.close(() => {
-        process.exit(0)
-    })
-}
+        process.exit(0);
+    });
+};
 
-process.on('SIGINT', () => cleanup('SIGINT'))
-process.on('SIGTERM', () => cleanup('SIGTERM'))
-process.on('exit', () => cleanup('exit'))
+process.on('SIGINT', () => cleanup('SIGINT'));
+process.on('SIGTERM', () => cleanup('SIGTERM'));
+process.on('exit', () => cleanup('exit'));
 
 server.on('error', (error) => {
     if (error.code !== 'EADDRINUSE') console.error(chalk.redBright(`[ERROR] ${error}`));
