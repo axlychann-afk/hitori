@@ -2805,17 +2805,29 @@ break
 			
 			// Ai Menu
 			case 'ai': case 'google': case 'bard': case 'gemini': {
-    if (!text) return m.reply(`Example: ${prefix + command} query`)
-    const apiUrl = `https://api.akuari.my.id/ai/gemini?query=${encodeURIComponent(text)}`
-    // Contoh link (buka browser): https://api.akuari.my.id/ai/gemini?query=halo
+    if (!text) return m.reply(`Example: ${prefix + command} halo`)
+    m.react('⏳')
     try {
-        let res = await axios.get(apiUrl)
-        m.reply(res.data.result)
+        // 🔥 API baru dari harzrestapi
+        const apiUrl = `https://api.harzrestapi.web.id/api/v2/ai/ch-at?apikey=FREE&q=${encodeURIComponent(text)}`
+        const { data } = await axios.get(apiUrl)
+        
+        // Sesuaikan path response sesuai struktur asli API
+        const response = data?.result || data?.response || data?.data || data
+        
+        if (!response) throw new Error('empty')
+        m.reply(response)
     } catch (e) {
-        m.reply(pickRandom(['Fitur Ai sedang bermasalah!','Tidak dapat terhubung ke ai!','Sistem Ai sedang sibuk sekarang!','Fitur sedang tidak dapat digunakan!']))
+        console.log(e)
+        m.reply(pickRandom([
+            'Maaf, AI sedang bermasalah. Coba lagi nanti.',
+            'Tidak dapat terhubung ke server AI.',
+            'Layanan AI sedang sibuk.',
+            'Gagal mendapatkan respons dari AI.'
+        ]))
     }
 }
-			break
+break
 			case 'deepseek': case 'r1': {
     if (!isLimit) return m.reply(global.mess.limit)
     if (!text) return m.reply('Halo! Ada yang bisa dibantu hari ini?')
@@ -2862,28 +2874,27 @@ break
 }
 			break
 			case 'play': case 'ytplay': case 'yts': case 'ytsearch': case 'youtubesearch': {
-    if (!isLimit) return m.reply(global.mess.limit)
-    if (!text) return m.reply(`Example: ${prefix + command} dj komang`)
-    m.react('⏳')
+    if (!isLimit) return m.reply(global.mess.limit);
+    if (!text) return m.reply(`Example: ${prefix + command} dj komang`);
+    m.react('⏳');
     
     try {
-        const apiUrl = `https://api.siputzx.my.id/api/s/youtube?query=${encodeURIComponent(text)}`
-        const { data } = await axios.get(apiUrl)
+        const apiUrl = `https://api.harzrestapi.web.id/api/v2/search/youtube?apikey=FREE&q=${encodeURIComponent(text)}`;
+        const { data: apiResponse } = await axios.get(apiUrl);
         
-        if (!data.status || !data.data || data.data.length === 0) throw new Error('empty')
+        if (apiResponse.status !== 200 || !apiResponse.data || apiResponse.data.length === 0) throw new Error('empty');
         
-        const hasil = pickRandom(data.data)
-        const teksnya = `*📍Title:* ${hasil.title || 'Tidak tersedia'}\n*✏Description:* ${hasil.description || 'Tidak tersedia'}\n*🌟Channel:* ${hasil.author?.name || 'Tidak tersedia'}\n*⏳Duration:* ${hasil.seconds || 'Tidak tersedia'} detik (${hasil.timestamp || 'Tidak tersedia'})\n*👁️Views:* ${hasil.views?.toLocaleString() || 'Tidak tersedia'}\n*📅Upload:* ${hasil.ago || 'Tidak tersedia'}\n*🔎Source:* ${hasil.url || 'Tidak tersedia'}\n\n_note : jika ingin mendownload silahkan_\n_pilih ${prefix}ytmp3 url_video atau ${prefix}ytmp4 url_video_`
+        const hasil = pickRandom(apiResponse.data);
+        const teksnya = `*📍Title:* ${hasil.title || 'Tidak tersedia'}\n*✏Description:* ${hasil.description || 'Tidak tersedia'}\n*🌟Channel:* ${hasil.author || 'Tidak tersedia'}\n*⏳Duration:* ${hasil.duration || 'Tidak tersedia'}\n*👁️Views:* ${hasil.viewCount || 'Tidak tersedia'}\n*📅Upload:* ${hasil.publishedTime || 'Tidak tersedia'}\n*🔎Source:* ${hasil.url || 'Tidak tersedia'}\n\n_note : jika ingin mendownload silahkan_\n_pilih ${prefix}ytmp3 url_video atau ${prefix}ytmp4 url_video_`;
         
-        await m.reply({ image: { url: hasil.thumbnail || hasil.image }, caption: teksnya })
-        setLimit(m, db)
-        
+        await m.reply({ image: { url: hasil.thumbnail }, caption: teksnya });
+        setLimit(m, db);
     } catch (e) {
-        console.log(e)
-        m.reply('Gagal mencari video, coba kata kunci lain!')
+        console.log(e);
+        m.reply('Gagal mencari video, coba kata kunci lain!');
     }
 }
-	break
+break
 	case 'removebg': {
     if (!isLimit) return m.reply(global.mess.limit)
     if (!m.quoted || !/image/.test(m.quoted.mimetype)) return m.reply(`Reply gambar dengan caption *${prefix + command}*`)
