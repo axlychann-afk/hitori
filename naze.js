@@ -3184,21 +3184,21 @@ case 'tiktok': case 'tiktokdown': case 'ttdown': case 'ttdl': case 'tt': case 't
         if (data.status === true && data.result) {
             const result = data.result;
             
-            // ✅ Prioritas: Video tanpa watermark
-            const videoUrl = result.video_no_watermark || result.video_hd || result.video;
-            if (videoUrl) {
+            // ✅ Cek apakah result.data adalah string (video) atau array (gambar carousel)
+            if (typeof result.data === 'string' && result.data.startsWith('http')) {
+                // Kirim video
                 await m.reply({
-                    video: { url: videoUrl },
-                    caption: `*📍Title:* ${result.title || '-'}\n*⏱️Duration:* ${result.duration || '-'}\n*👤Author:* ${result.author?.nickname || result.author?.unique_id || '-'}\n*📊Stats:* ${result.stats?.views || 0} views, ${result.stats?.likes || 0} likes`,
+                    video: { url: result.data },
+                    caption: `*📍Title:* ${result.title || '-'}\n*⏱️Duration:* ${result.duration || '-'}\n*👤Author:* ${result.author?.nickname || result.author?.fullname || '-'}\n*📊Stats:* ${result.stats?.views || 0} views, ${result.stats?.likes || 0} likes`,
                     mimetype: 'video/mp4'
                 });
                 setLimit(m, db);
                 return;
             }
             
-            // ✅ Alternatif: Koleksi gambar (carousel)
-            if (result.data && Array.isArray(result.data) && result.data.length > 0) {
-                const caption = `*📍Title:* ${result.title || '-'}\n*👤Author:* ${result.author?.nickname || result.author?.unique_id || '-'}\n*📊Stats:* ${result.stats?.views || 0} views, ${result.stats?.likes || 0} likes`;
+            // ✅ Jika result.data adalah array (carousel gambar)
+            if (Array.isArray(result.data) && result.data.length > 0) {
+                const caption = `*📍Title:* ${result.title || '-'}\n*👤Author:* ${result.author?.nickname || result.author?.fullname || '-'}\n*📊Stats:* ${result.stats?.views || 0} views, ${result.stats?.likes || 0} likes`;
                 if (typeof naze.sendAlbumMessage === 'function' && result.data.length > 1) {
                     const album = result.data.map(url => ({ image: { url } }));
                     await naze.sendAlbumMessage(m.chat, { album, caption }, { quoted: m });
@@ -3211,10 +3211,8 @@ case 'tiktok': case 'tiktokdown': case 'ttdown': case 'ttdl': case 'tt': case 't
                 setLimit(m, db);
                 return;
             }
-            
-            throw new Error('Tidak ada media yang ditemukan');
         }
-        throw new Error('Gagal memproses link TikTok');
+        throw new Error('Tidak ada media yang ditemukan');
     } catch (e) {
         console.error(e);
         m.reply(global.mess.fail);
