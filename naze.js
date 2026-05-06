@@ -2125,7 +2125,6 @@ Select Bot Settings:
 			
 			// Tools Menu
 			case 'fetch': case 'get': {
-				if (!isPremium) return m.reply(global.mess.prem)
 				if (!isLimit) return m.reply(global.mess.limit)
 				if (!/^https?:\/\//.test(text)) return m.reply('Awali dengan http:// atau https://');
 				try {
@@ -2356,7 +2355,7 @@ Select Bot Settings:
 			
 			break
 			case 'ssweb': {
-    if (!isPremium) return m.reply(global.mess.prem)
+    if (!isLimit) return m.reply(global.mess.limit)
     if (!text) return m.reply(`Example: ${prefix + command} https://github.com/nazedev/naze-md`)
     let url = text;
     if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
