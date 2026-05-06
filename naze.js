@@ -2880,15 +2880,14 @@ break
     
     try {
         const apiUrl = `https://api.harzrestapi.web.id/api/v2/search/youtube?apikey=FREE&q=${encodeURIComponent(text)}`;
-        const { data: apiResponse } = await axios.get(apiUrl);
+        const { data } = await axios.get(apiUrl);
         
-        // ✅ Cek status 200 dan data array tidak kosong
-        if (apiResponse.status !== 200 || !apiResponse.data || apiResponse.data.length === 0) {
+        // ✅ Perbaikan: status 200, data.result
+        if (data.status !== 200 || !data.result || data.result.length === 0) {
             throw new Error('empty');
         }
         
-        const hasil = pickRandom(apiResponse.data);
-        // ✅ Properti sesuai contoh respons
+        const hasil = pickRandom(data.result);
         const teksnya = `*📍Title:* ${hasil.title || 'Tidak tersedia'}
 *✏Description:* ${hasil.description || 'Tidak tersedia'}
 *🌟Channel:* ${hasil.author || 'Tidak tersedia'}
