@@ -3,7 +3,7 @@ process.once('uncaughtException', console.error)
 process.once('unhandledRejection', console.error)
 
 /*
-	* Create By Naze
+	* Create By 
 	* Follow https://github.com/nazedev
 	* Whatsapp : https://whatsapp.com/channel/0029VaWOkNm7DAWtkvkJBK43
 */
@@ -129,7 +129,7 @@ const naze = async (naze, m, msg, store) => {
 		const text = global.q = args.join(' ')
 		const mime = (quoted.msg || quoted).mimetype || ''
 		const qmsg = (quoted.msg || quoted)
-		const author = set.author = global.author || 'Nazedev';
+		const author = set.author = global.author || 'Axlydev';
 		const packname = set.packname = global.packname || 'Bot WhatsApp';
 		const botname = set.botname = global.botname || 'Hitori Bot';
 		const badWordsLower = global.badWords.map(v => v.toLowerCase());
@@ -156,7 +156,7 @@ const naze = async (naze, m, msg, store) => {
 				remoteJid: '0@s.whatsapp.net',
 				participant: '0@s.whatsapp.net',
 				fromMe: false,
-				id: 'Naze'
+				id: 'Axly'
 			},
 			message: {
 				contactMessage: {
@@ -1313,7 +1313,7 @@ if (!m.isGroup && (!isCmd || isCreator)) {
 						author: teksnya.trim()
 					});
 					m.reply(global.mess.done)
-				} else m.reply(`Example: ${prefix + command} Naze`)
+				} else m.reply(`Example: ${prefix + command} Axly`)
 			}
 			break
 			case 'setlocale': case 'setlocalebot': case 'setbotlocale': {
@@ -1414,7 +1414,7 @@ if (!m.isGroup && (!isCmd || isCreator)) {
 			}
 			break
 			case 'donasi': case 'donate': {
-				m.reply('Donasi Dapat Melalui Url Dibawah Ini :\nhttps://saweria.co/naze')
+				m.reply('Donasi ? gabutuh')
 			}
 			break
 			
@@ -1579,7 +1579,7 @@ if (!m.isGroup && (!isCmd || isCreator)) {
 				await naze.sendMessage(m.chat, { delete: { remoteJid: m.chat, fromMe: m.isBotAdmin ? false : true, id: m.quoted.id, participant: m.quoted.sender }})
 			}
 			break
-			case 'pin': case 'unpin': {
+			case 'sematkan': case 'unpin': {
 				if (!m.isGroup) return m.reply(global.mess.group)
 				if (!m.isAdmin) return m.reply(global.mess.admin)
 				if (!m.isBotAdmin) return m.reply(global.mess.botAdmin)
@@ -1926,7 +1926,7 @@ Select Bot Settings:
 				}
 			}
 			break
-			case 'inspect': {
+			case 'inspect': case 'cekidch': case 'idch': {
 				if (!text) return m.reply('Masukkan Link Grup atau Saluran!')
 				let _grup = /chat.whatsapp.com\/([\w\d]*)/;
 				let _saluran = /whatsapp\.com\/channel\/([\w\d]*)/;
@@ -2158,7 +2158,7 @@ Select Bot Settings:
 				let media = await naze.downloadAndSaveMediaMessage(qmsg)
 				try {
 					let audio = await toAudio(media, 'mp4')
-					await m.reply({ document: { url: audio }, mimetype: 'audio/mpeg', fileName: `Convert By Naze Bot.mp3`})
+					await m.reply({ document: { url: audio }, mimetype: 'audio/mpeg', fileName: `Convert By Axly Bot.mp3`})
 					if (fs.existsSync(audio)) fs.unlinkSync(audio)
 				} finally {
 					if (fs.existsSync(media)) fs.unlinkSync(media)
@@ -2971,7 +2971,7 @@ break;
 }
 break	
 			break
-			case 'pinterest': case 'pint': {
+			case 'pinterest': case 'pint': case 'pin': {
     if (!isLimit) return m.reply(global.mess.limit)
     if (!text) return m.reply(`Example: ${prefix + command} hu tao`)
     m.react('⏳')
@@ -3170,67 +3170,38 @@ break
     }
 }
 break
-		case 'tiktok': case 'tiktokdown': case 'ttdown': case 'ttdl': case 'tt': case 'ttmp4': case 'ttvideo': case 'tiktokmp4': case 'tiktokvideo': {
+case 'tiktok': case 'tiktokdown': case 'ttdown': case 'ttdl': case 'tt': case 'ttmp4': case 'ttvideo': case 'tiktokmp4': case 'tiktokvideo': {
     if (!isLimit) return m.reply(global.mess.limit)
     if (!text) return m.reply(`Example: ${prefix + command} url_tiktok`)
     if (!text.includes('tiktok.com')) return m.reply('Url Tidak Mengandung Result Dari Tiktok!')
     m.react('⏳')
+    
     try {
-        // Pakai tikwm.com (no key, masih aktif)
-        let apiUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(text)}?hd=1`
-        // Contoh link respons web: https://www.tikwm.com/api/?url=https://www.tiktok.com/@giaerra/video/7577398554101058824?hd=1
-        let { data: hasil } = await axios.get(apiUrl)
-        if (hasil.code === 0 && hasil.data) {
-            let { data: res } = hasil
-            if (res.play) {
-                // Tipe video
-                await m.reply({ 
-                    video: { url: res.play }, 
-                    caption: `*📍Title:* ${res.title || '-'}\n*⏱️Duration:* ${res.duration || '-'}s\n*👤Author:* ${res.author?.nickname || '-'} (@${res.author?.unique_id || '-'})`
-                })
-                setLimit(m, db)
-            } else if (res.images && res.images.length > 0) {
-                // Tipe slideshow (jika tikwm mengembalikan images)
-                await naze.sendAlbumMessage(m.chat, {
-                    album: res.images.map(a => ({ image: { url: a } })),
-                    caption: `*📍Title:* ${res.title || res.desc || '-'}\n*👤Author:* ${res.author?.nickname || '-'} (@${res.author?.unique_id || '-'})`
-                }, { quoted: m })
-                setLimit(m, db)
-            } else {
-                throw new Error('Unsupported type')
-            }
+        // 🔥 API baru dari fromscratch.web.id
+        const apiUrl = `https://api.fromscratch.web.id/v1/api/down/tiktok?url=${encodeURIComponent(text)}`
+        const { data } = await axios.get(apiUrl)
+        
+        // Cek respons
+        if (data.status === 200 && data.data && data.data.no_watermark) {
+            const videoUrl = data.data.no_watermark // video tanpa watermark
+            const title = data.data.title || 'TikTok Video'
+            const source = data.source || 'fromscratch'
+            
+            await m.reply({
+                video: { url: videoUrl },
+                caption: `*📍Title:* ${title}\n*👤Source:* ${source}`,
+                mimetype: 'video/mp4'
+            })
+            setLimit(m, db)
         } else {
-            throw new Error('API error')
+            throw new Error('Gagal mengambil video')
         }
     } catch (e) {
-        console.log('tikwm gagal, fallback ke tiktok-api-dl')
-        try {
-            // Fallback ke library @tobyg74/tiktok-api-dl (no key)
-            const { TiktokDL } = require('@tobyg74/tiktok-api-dl')
-            const result = await TiktokDL(text, { version: 'v1' })
-            if (result.status === 'success') {
-                if (result.result.type === 'video') {
-                    await m.reply({
-                        video: { url: result.result.video[0] },
-                        caption: `*📍Title:* ${result.result.description || '-'}\n*👤Author:* ${result.result.author?.nickname || '-'} (@${result.result.author?.username || '-'})`
-                    })
-                } else if (result.result.type === 'image') {
-                    await naze.sendAlbumMessage(m.chat, {
-                        album: result.result.images.map(a => ({ image: { url: a } })),
-                        caption: `*📍Title:* ${result.result.description || '-'}\n*👤Author:* ${result.result.author?.nickname || '-'} (@${result.result.author?.username || '-'})`
-                    }, { quoted: m })
-                }
-                setLimit(m, db)
-            } else {
-                throw new Error('Library fallback fail')
-            }
-        } catch (e2) {
-            console.log(e2)
-            m.reply(global.mess.fail)
-        }
+        console.error(e)
+        m.reply(global.mess.fail)
     }
 }
-			break
+break
 		case 'ttmp3': case 'tiktokmp3': case 'ttaudio': case 'tiktokaudio': {
     if (!isLimit) return m.reply(global.mess.limit)
     if (!text) return m.reply(`Example: ${prefix + command} url_tiktok`)
@@ -3347,17 +3318,28 @@ break
 			break
 			
 			// Anime Menu
-			case 'waifu': case 'neko': {
-				try {
-					if (!isNsfw && text === 'nsfw') return m.reply('Filter Nsfw Sedang Aktif!')
-					const res = await fetchJson('https://api.waifu.pics/' + (text === 'nsfw' ? 'nsfw' : 'sfw') + '/' + command)
-					await naze.sendFileUrl(m.chat, res.url, 'Random Waifu', m)
-					setLimit(m, db)
-				} catch (e) {
-					m.reply('Server sedang offline!')
-				}
-			}
-			break
+			case 'waifu': {
+    try {
+        if (!isNsfw && text === 'nsfw') return m.reply('Filter Nsfw Sedang Aktif!')
+        
+        const apiUrl = `https://api.harzrestapi.web.id/api/v2/anime/waifu?apikey=FREE&q=neko`
+        const { data } = await axios.get(apiUrl)
+        
+        // Cek status dan ketersediaan items
+        if (data.status !== 200 || !data.items || data.items.length === 0) throw new Error('empty')
+        
+        // Ambil item pertama (karena setiap request hanya 1 item, tapi tetap aman)
+        const waifu = data.items[0]
+        const imageUrl = waifu.url
+        
+        await naze.sendFileUrl(m.chat, imageUrl, 'Random Waifu', m)
+        setLimit(m, db)
+    } catch (e) {
+        console.error(e)
+        m.reply('Server sedang offline!')
+    }
+}
+break
 			
 			// Fun Menu
 			case 'dadu': {
@@ -4276,7 +4258,7 @@ break
 ├ *Money* : ${db.users[m.sender] ? db.users[m.sender].money.toLocaleString('id-ID') : '0'}
 ╰─┬────❍
 ╭─┴─❍「 *BOT INFO* 」❍
-├ *Nama Bot* : ${set?.botname || 'Naze Bot'}
+├ *Nama Bot* : ${set?.botname || 'Axly Bot'}
 ├ *Powered* : @${'0@s.whatsapp.net'.split('@')[0]}
 ├ *Owner* : @${ownerNumber[0].split('@')[0]}
 ├ *Mode* : ${naze.public ? 'Public' : 'Self'}
@@ -4315,10 +4297,6 @@ break
 │${setv} ${prefix}q (reply pesan)
 │${setv} ${prefix}menfes (62xxx|fake name)
 │${setv} ${prefix}confes (62xxx|fake name)
-│${setv} ${prefix}roomai
-│${setv} ${prefix}jadibot 🔸️
-│${setv} ${prefix}stopjadibot
-│${setv} ${prefix}listjadibot
 │${setv} ${prefix}donasi
 │${setv} ${prefix}addsewa
 │${setv} ${prefix}delsewa
@@ -4338,7 +4316,7 @@ break
 │${setv} ${prefix}linkgrup
 │${setv} ${prefix}revoke
 │${setv} ${prefix}tagall
-│${setv} ${prefix}pin
+│${setv} ${prefix}sematkan
 │${setv} ${prefix}unpin
 │${setv} ${prefix}hidetag
 │${setv} ${prefix}totag (reply pesan)
@@ -4409,7 +4387,6 @@ break
 ╰─┬────❍
 ╭─┴❍「 *ANIME* 」❍
 │${setv} ${prefix}waifu
-│${setv} ${prefix}neko
 ╰─┬────❍
 ╭─┴❍「 *GAME* 」❍
 │${setv} ${prefix}tictactoe
@@ -4570,10 +4547,6 @@ break
 │${setv} ${prefix}q (reply pesan)
 │${setv} ${prefix}menfes (62xxx|fake name)
 │${setv} ${prefix}confes (62xxx|fake name)
-│${setv} ${prefix}roomai
-│${setv} ${prefix}jadibot 🔸️
-│${setv} ${prefix}stopjadibot
-│${setv} ${prefix}listjadibot
 │${setv} ${prefix}donasi
 │${setv} ${prefix}addsewa
 │${setv} ${prefix}delsewa
@@ -4597,7 +4570,7 @@ break
 │${setv} ${prefix}linkgrup
 │${setv} ${prefix}revoke
 │${setv} ${prefix}tagall
-│${setv} ${prefix}pin
+│${setv} ${prefix}sematkan
 │${setv} ${prefix}unpin
 │${setv} ${prefix}hidetag
 │${setv} ${prefix}totag (reply pesan)
@@ -4706,7 +4679,6 @@ break
 				m.reply(`
 ╭──❍「 *ANIME* 」❍
 │${setv} ${prefix}waifu
-│${setv} ${prefix}neko
 ╰──────❍`)
 			}
 			break
