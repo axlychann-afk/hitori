@@ -2311,11 +2311,16 @@ Select Bot Settings:
 			case 'hd': case 'remini': case 'hdr': case 'tes': {
     if (!isLimit) return m.reply(global.mess.limit);
     
-    // Cek gambar dari reply ATAU dari kiriman langsung (caption)
-    let quotedMsg = m.quoted || m;
-    if (!/image/.test(quotedMsg.mimetype)) {
-        return m.reply(`Kirim gambar dengan caption *${prefix + command}* ATAU reply gambar yang sudah ada`);
+    // Ambil gambar dari reply atau dari pesan langsung
+    let imageMsg = m.quoted || m;
+    
+    // Debug: log ke console untuk cek
+    console.log('HD Command - imageMsg type:', imageMsg?.type, 'mimetype:', imageMsg?.mimetype);
+    
+    if (!imageMsg || !/image/.test(imageMsg.mimetype || '')) {
+        return m.reply(`❌ Tidak ada gambar!\n\nKirim gambar dengan caption *${prefix + command}*\nAtau reply gambar yang sudah ada dengan *${prefix + command}*`);
     }
+    
     m.react('⏳');
     
     let mediaPath = null;
@@ -2325,8 +2330,10 @@ Select Bot Settings:
         const FormData = require('form-data');
         const form = new FormData();
         
-        // Download gambar dari sumber yang benar (reply atau langsung)
-        mediaPath = await naze.downloadAndSaveMediaMessage(quotedMsg);
+        // Download gambar
+        mediaPath = await naze.downloadAndSaveMediaMessage(imageMsg);
+        if (!mediaPath || !fs.existsSync(mediaPath)) throw new Error('Gagal download gambar');
+        
         form.append('method', '1');
         form.append('is_pro_version', 'false');
         form.append('is_enhancing_more', 'false');
@@ -2341,22 +2348,24 @@ Select Bot Settings:
                 'user-agent': 'Dart/3.5 (dart:io)'
             },
             responseType: 'arraybuffer',
-            timeout: 30000
+            timeout: 60000
         });
         
         resultBuffer = Buffer.from(response.data);
         
-        await m.reply({ image: resultBuffer, caption: '✅ *HD Enhanced!*\n> Scrape From Randy' });
+        await m.reply({ image: resultBuffer, caption: '✅ *HD Enhanced!*' });
         setLimit(m, db);
         
     } catch (e) {
-        console.error(e);
-        m.reply('❌ Gagal meng-enhance gambar. Mungkin kebanyakan request atau server error.');
+        console.error('HD Error:', e.message);
+        m.reply(`❌ Gagal: ${e.message}`);
     } finally {
-        if (mediaPath && fs.existsSync(mediaPath)) fs.unlinkSync(mediaPath);
+        if (mediaPath && fs.existsSync(mediaPath)) {
+            try { fs.unlinkSync(mediaPath); } catch(e) {}
+        }
     }
 }
-break;
+break
 			case 'dehaze': case 'colorize': case 'colorfull': {
     if (!isLimit) return m.reply(global.mess.limit)
     if (/image/.test(mime)) {
