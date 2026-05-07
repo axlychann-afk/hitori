@@ -2308,29 +2308,52 @@ Select Bot Settings:
     }
 }
 			break
-			case 'tohd': case 'remini': case 'hd': {
-    if (!isLimit) return m.reply(global.mess.limit)
-    if (/image/.test(mime)) {
-        m.react('⏳')
-        let media = await naze.downloadAndSaveMediaMessage(qmsg);
-        let outputFile = `./database/temp/${getRandom('.jpg')}`;
-        // Gunakan scale factor dari text, default 2 (2x perbesaran)
-        const scaleFactor = isNaN(parseInt(text)) ? 2 : parseInt(text) < 10 ? parseInt(text) : 2;
-        exec(`ffmpeg -i "${media}" -vf "scale=iw*${scaleFactor}:ih*${scaleFactor}:flags=lanczos" -q:v 1 "${outputFile}"`, async (err) => {
-            try {
-                if (err) return m.reply(global.mess.fail)
-                await naze.sendMessage(m.chat, { image: { url: outputFile }, caption: global.mess.done }, { quoted: m });
-                setLimit(m, db)
-            } catch (e) {
-                console.log(e);
-            } finally {
-                if (outputFile && fs.existsSync(outputFile)) fs.unlinkSync(outputFile)
-                if (media && fs.existsSync(media)) fs.unlinkSync(media)
-            }
+			case 'hd': case 'remini': case 'hdr': case 'tes': {
+    if (!isLimit) return m.reply(global.mess.limit);
+    if (!m.quoted || !/image/.test(m.quoted.mimetype)) {
+        return m.reply(`Kirim/reply gambar dengan caption *${prefix + command}*`);
+    }
+    m.react('⏳');
+    
+    let mediaPath = null;
+    let resultBuffer = null;
+    
+    try {
+        const FormData = require('form-data');
+        const form = new FormData();
+        
+        // Download gambar
+        mediaPath = await naze.downloadAndSaveMediaMessage(m.quoted);
+        form.append('method', '1');
+        form.append('is_pro_version', 'false');
+        form.append('is_enhancing_more', 'false');
+        form.append('max_image_size', 'high');
+        form.append('file', fs.createReadStream(mediaPath), `enhance_${Date.now()}.jpg`);
+        
+        const response = await axios.post('https://ihancer.com/api/enhance', form, {
+            headers: {
+                ...form.getHeaders(),
+                'accept-encoding': 'gzip',
+                'host': 'ihancer.com',
+                'user-agent': 'Dart/3.5 (dart:io)'
+            },
+            responseType: 'arraybuffer',
+            timeout: 30000
         });
-    } else m.reply(`Kirim/Reply Gambar dengan format\nExample: ${prefix + command}`)
+        
+        resultBuffer = Buffer.from(response.data);
+        
+        await m.reply({ image: resultBuffer, caption: '✅ *HD Enhanced!*\n> Scrape From Randy' });
+        setLimit(m, db);
+        
+    } catch (e) {
+        console.error(e);
+        m.reply('❌ Gagal meng-enhance gambar. Mungkin kebanyakan request atau server error.');
+    } finally {
+        if (mediaPath && fs.existsSync(mediaPath)) fs.unlinkSync(mediaPath);
+    }
 }
-			break
+break;			
 			case 'dehaze': case 'colorize': case 'colorfull': {
     if (!isLimit) return m.reply(global.mess.limit)
     if (/image/.test(mime)) {
