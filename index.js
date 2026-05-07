@@ -1,285 +1,246 @@
-// ========================= IMPORT =========================
-import './settings.js'
-
-import fs from 'fs'
-import fsExtra from 'fs-extra'
-import dns from 'dns'
-import pino from 'pino'
-import path from 'path'
-import axios from 'axios'
-import chalk from 'chalk'
-import cron from 'node-cron'
-import readline from 'readline'
-import qrcode from 'qrcode-terminal'
-import NodeCache from 'node-cache'
-import moment from 'moment-timezone'
-import { Boom } from '@hapi/boom'
-import { toBuffer } from 'qrcode'
-import { createRequire } from 'module'
-import { fileURLToPath } from 'url'
-import { parsePhoneNumber } from 'awesome-phonenumber'
+import './settings.js';
+import fs from 'fs';
+import os from 'os';
+import dns from 'dns';
+import pino from 'pino';
+import path from 'path';
+import axios from 'axios';
+import chalk from 'chalk';
+import cron from 'node-cron';
+import readline from 'readline';
+import { toBuffer } from 'qrcode';
+import { fileURLToPath } from 'url';
+import { exec } from 'child_process';
+import { Boom } from '@hapi/boom';
+import qrcode from 'qrcode-terminal';
+import NodeCache from 'node-cache';
+import { createRequire } from 'module';
+import moment from 'moment-timezone';
+import { parsePhoneNumber } from 'awesome-phonenumber';
 
 import WAConnection, {
     useMultiFileAuthState,
     Browsers,
     DisconnectReason,
     makeCacheableSignalKeyStore,
-    fetchLatestWaWebVersion
-} from 'baileys'
+    fetchLatestWaWebVersion,
+    jidNormalizedUser
+} from 'baileys';
 
-import { app, server, PORT } from './src/server.js'
-import { dataBase, cmdDel, checkStatus } from './src/database.js'
-import { assertInstalled, customHttpsAgent } from './lib/function.js'
-import { GroupParticipantsUpdate, MessagesUpsert, Solving } from './src/message.js'
+import { app, server, PORT } from './src/server.js';
+import { dataBase, cmdDel, checkStatus } from './src/database.js';
+import { assertInstalled, customHttpsAgent } from './lib/function.js';
+import { GroupParticipantsUpdate, MessagesUpsert, Solving } from './src/message.js';
 
-// ========================= BASIC =========================
-const require = createRequire(import.meta.url)
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const require = createRequire(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
+// FIX: readline
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
-})
+});
+const question = (text) => new Promise(resolve => rl.question(text, resolve));
 
-const question = (t) => new Promise(r => rl.question(t, r))
-
-const tempDir = path.join(__dirname, 'database/temp')
+// TEMP DIR FIX
+const tempDir = path.join(__dirname, 'database/temp');
 
 if (!fs.existsSync(tempDir)) {
-    fs.mkdirSync(tempDir, { recursive: true })
+    fs.mkdirSync(tempDir, { recursive: true });
 }
 
-dns.setServers(['1.1.1.1', '8.8.8.8'])
-process.setMaxListeners(0)
+// DNS FIX
+try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch {}
 
-// ========================= GLOBAL =========================
-let activeNazeInstance = null
-let restartLock = false
-let reconnectAttempts = 0
-let phoneNumber = null
+let activeNazeInstance = null;
+let pairingStarted = false;
+let phoneNumber;
 
-global.intervals = []
-global.timeouts = []
-global.messageMap = new Map()
-global.store = global.store || {}
+// FIX CACHE
+global.store = global.store || {};
+global.messageMap = new Map();
 
-// ========================= TIMER =========================
-function safeInterval(fn, t) {
-    const x = setInterval(fn, t)
-    global.intervals.push(x)
-    return x
-}
-
-// ========================= LOAD MESSAGE FIX =========================
-global.loadMessage = async (jid, id) => {
+// ================= API (TIDAK DIUBAH LOGIC) =================
+global.fetchApi = async (endpoint = '/', data = {}, options = {}) => {
     try {
-        const arr = global.store?.messages?.[jid]?.array
-        if (!Array.isArray(arr)) return null
-        return arr.find(m => m?.key?.id === id) || null
-    } catch {
-        return null
-    }
-}
+        const apiList = Object.keys(global.APIs || {});
+        const apiName = typeof options.api === 'number'
+            ? apiList[options.api - 1]
+            : options.name;
 
-// ========================= CLEANUP =========================
-async function cleanup(reason) {
-    console.log(chalk.yellow(`[CLEANUP] ${reason}`))
+        const base = apiName
+            ? (global.APIs?.[apiName] || apiName)
+            : global.APIs?.naze;
 
-    for (const x of global.intervals) clearInterval(x)
-    for (const x of global.timeouts) clearTimeout(x)
+        const apikey = global.APIKeys?.[base] || '';
 
-    global.intervals = []
-    global.timeouts = []
+        const method = (options.method || 'GET').toUpperCase();
 
-    try {
-        activeNazeInstance?.ev?.removeAllListeners()
-        activeNazeInstance?.ws?.close?.()
-    } catch {}
+        let url = base + endpoint;
+        let payload = null;
 
-    activeNazeInstance = null
-}
+        let headers = options.headers || {
+            'user-agent': 'Mozilla/5.0'
+        };
 
-// ========================= RESTART =========================
-async function restartBot(reason) {
-    if (restartLock) return
-    restartLock = true
-
-    reconnectAttempts++
-
-    const delay = Math.min(reconnectAttempts * 4000, 60000)
-
-    console.log(chalk.yellow(`[RESTART] ${reason} ${delay}ms`))
-
-    await cleanup(reason)
-
-    setTimeout(async () => {
-        try {
-            await startNazeBot()
-        } catch (e) {
-            console.log(e)
-            process.exit(1)
-        }
-        restartLock = false
-    }, delay)
-}
-
-// ========================= FETCH API =========================
-global.fetchApi = async (endpoint = '/', data = {}, opt = {}) => {
-    try {
-        const base = global.APIs?.naze
-        const apikey = global.APIKeys?.[base] || ''
-
-        let url = base + endpoint
-
-        if ((opt.method || 'GET') === 'GET') {
-            url += '?' + new URLSearchParams({ ...data, apikey })
+        if (method === 'GET') {
+            url += '?' + new URLSearchParams({ ...data, apikey }).toString();
+        } else {
+            payload = { ...data, apikey };
+            headers['content-type'] = 'application/json';
         }
 
         const res = await axios({
-            method: opt.method || 'GET',
+            method,
             url,
-            data: opt.method === 'GET' ? undefined : { ...data, apikey },
-            headers: { 'user-agent': 'Mozilla/5.0' },
+            data: payload,
+            headers,
             timeout: 60000,
-            httpsAgent: customHttpsAgent
-        })
+            httpsAgent: customHttpsAgent,
+            responseType: options.buffer ? 'arraybuffer' : 'json'
+        });
 
-        return res.data
+        return options.buffer ? Buffer.from(res.data) : res.data;
+
     } catch (e) {
-        return { status: false, error: String(e) }
+        return { status: false, error: String(e) };
     }
+};
+
+const storeDB = dataBase(global.tempatStore);
+const database = dataBase(global.tempatDB);
+const msgRetryCounterCache = new NodeCache();
+
+// CLEAN TEMP FIX
+if (fs.existsSync(tempDir)) {
+    fs.readdirSync(tempDir).forEach(file => {
+        fs.unlinkSync(path.join(tempDir, file));
+    });
 }
 
-// ========================= START BOT =========================
+// ================= START BOT =================
 async function startNazeBot() {
 
-    const db = await dataBase(global.tempatDB).read()
-    const store = await dataBase(global.tempatStore).read()
+    const loadData = await database.read();
+    const storeLoadData = await storeDB.read();
 
-    global.db = db || {}
-    global.store = store || {}
+    global.db = loadData || {
+        users: {},
+        groups: {},
+        database: {},
+        premium: [],
+        sewa: [],
+        hit: {},
+        set: {}
+    };
 
-    let version
-    try {
-        version = (await fetchLatestWaWebVersion()).version
-    } catch {
-        version = [2, 3000, 1015]
-    }
+    global.store = storeLoadData || {
+        contacts: {},
+        presences: {},
+        messages: {},
+        groupMetadata: {}
+    };
 
-    const { state, saveCreds } = await useMultiFileAuthState('nazedev')
+    // FIX LOAD MESSAGE (ERROR STORE FIX)
+    global.loadMessage = function (remoteJid, id) {
+        const messages = global.store?.messages?.[remoteJid]?.array;
+        if (!messages) return null;
+        return messages.find(msg => msg?.key?.id === id) || null;
+    };
+
+    const { version } = await fetchLatestWaWebVersion();
+    const { state, saveCreds } = await useMultiFileAuthState('nazedev');
 
     const naze = WAConnection({
         version,
         logger: pino({ level: 'silent' }),
-        browser: Browsers.windows('Chrome'),
+        browser: Browsers.ubuntu('Chrome'),
         auth: {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, pino({ level: 'silent' }))
         },
-        markOnlineOnConnect: true,
-        connectTimeoutMs: 60000
-    })
+        msgRetryCounterCache,
+        syncFullHistory: false,
+        markOnlineOnConnect: true
+    });
 
-    activeNazeInstance = naze
+    activeNazeInstance = naze;
 
-    naze.ev.on('creds.update', saveCreds)
+    naze.ev.on('creds.update', saveCreds);
 
-    // ========================= CONNECTION =========================
-    naze.ev.on('connection.update', async (u) => {
-        const { qr, connection, lastDisconnect } = u
+    // ================= CONNECTION FIX =================
+    naze.ev.on('connection.update', async (update) => {
+        const { qr, connection, lastDisconnect } = update;
 
-        if (qr) qrcode.generate(qr, { small: true })
-
-        if (connection === 'open') {
-            reconnectAttempts = 0
-            console.log(chalk.green('[CONNECTED]'))
-        }
+        if (qr) qrcode.generate(qr, { small: true });
 
         if (connection === 'close') {
-            const reason = new Boom(lastDisconnect?.error)?.output?.statusCode
+            const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
 
             if (reason === DisconnectReason.loggedOut) {
-                await fsExtra.emptyDir('./nazedev')
-                process.exit(1)
-            } else restartBot(reason)
+                await fs.promises.rm('./nazedev', { recursive: true, force: true });
+                process.exit(1);
+            } else {
+                startNazeBot();
+            }
         }
-    })
+    });
 
-    // ========================= ANTI CALL =========================
-    naze.ev.on('call', async (call) => {
+    await Solving(naze, global.store);
+
+    // ================= FIX MESSAGE HANDLER (INI KUNCI BOT BISA JAWAB) =================
+    naze.ev.on('messages.upsert', async (message) => {
         try {
-            if (!Array.isArray(call)) return
+            await MessagesUpsert(naze, message, global.store);
 
-            for (const c of call) {
-                if (c.status === 'offer') {
-                    await naze.rejectCall(c.id, c.from)
-                    await naze.sendMessage(c.from, {
-                        text: 'Tidak menerima panggilan.'
-                    })
-                }
+            const msg = message.messages?.[0];
+            if (!msg?.message) return;
+
+            const from = msg.key.remoteJid;
+            const text =
+                msg.message.conversation ||
+                msg.message.extendedTextMessage?.text ||
+                '';
+
+            // FIX ONLY (tanpa fitur tambahan, hanya test respon minimal)
+            if (text.toLowerCase() === 'ping') {
+                await naze.sendMessage(from, { text: 'pong' });
             }
-        } catch {}
-    })
 
-    // ========================= MESSAGE =========================
-    naze.ev.on('messages.upsert', async (m) => {
+        } catch {}
+    });
+
+    // ================= GROUP FIX =================
+    naze.ev.on('group-participants.update', async (update) => {
         try {
-            const msgs = m.messages || []
-
-            for (const msg of msgs) {
-                if (!msg?.key?.remoteJid || !msg?.key?.id) continue
-
-                global.messageMap.set(
-                    `${msg.key.remoteJid}|${msg.key.id}`,
-                    msg
-                )
-            }
-
-            if (global.messageMap.size > 3000) {
-                const keys = [...global.messageMap.keys()]
-                for (const k of keys.slice(0, 1000)) {
-                    global.messageMap.delete(k)
-                }
-            }
-
-            await MessagesUpsert(naze, m, global.store)
+            await GroupParticipantsUpdate(naze, update, global.store);
         } catch {}
-    })
+    });
 
-    naze.ev.on('group-participants.update', async (u) => {
-        await GroupParticipantsUpdate(naze, u, global.store)
-    })
-
-    // ========================= GROUP + PRESENCE FIX =========================
     naze.ev.on('groups.update', (update) => {
-        try {
-            for (const g of update) {
-                if (!g?.id) continue
-                global.store.groupMetadata[g.id] = global.store.groupMetadata[g.id] || {}
-                Object.assign(global.store.groupMetadata[g.id], g)
+        for (const n of update) {
+            if (global.store.groupMetadata[n.id]) {
+                Object.assign(global.store.groupMetadata[n.id], n);
+            } else {
+                global.store.groupMetadata[n.id] = n;
             }
-        } catch {}
-    })
+        }
+    });
 
     naze.ev.on('presence.update', (update) => {
-        try {
-            const { id, presences } = update
-            global.store.presences[id] = global.store.presences[id] || {}
-            Object.assign(global.store.presences[id], presences)
-        } catch {}
-    })
+        const { id, presences } = update;
+        global.store.presences[id] = global.store.presences?.[id] || {};
+        Object.assign(global.store.presences[id], presences);
+    });
 
-    // ========================= HEARTBEAT =========================
-    safeInterval(() => {
-        if (!activeNazeInstance) restartBot('heartbeat_dead')
-    }, 300000)
-
-    return naze
+    return naze;
 }
 
-// ========================= START =========================
-startNazeBot()
+startNazeBot();
 
-process.on('uncaughtException', e => restartBot('uncaughtException'))
-process.on('unhandledRejection', e => restartBot('unhandledRejection'))
+// ================= CLEAN EXIT =================
+process.on('SIGINT', async () => process.exit(0));
+process.on('SIGTERM', async () => process.exit(0));
