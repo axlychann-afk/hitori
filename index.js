@@ -1,4 +1,6 @@
-// ========================= IMPORT ========================= import './settings.js' import fs from 'fs' import fsExtra from 'fs-extra' import dns from 'dns' import pino from 'pino' import path from 'path' import axios from 'axios' import chalk from 'chalk' import cron from 'node-cron' import readline from 'readline' import qrcode from 'qrcode-terminal' import NodeCache from 'node-cache' import moment from 'moment-timezone' import { Boom } from '@hapi/boom' import { toBuffer } from 'qrcode' import { createRequire } from 'module' import { fileURLToPath } from 'url' import { parsePhoneNumber } from 'awesome-phonenumber'
+// ========================= IMPORT ========================= import './settings.js'
+
+import fs from 'fs' import fsExtra from 'fs-extra' import dns from 'dns' import pino from 'pino' import path from 'path' import axios from 'axios' import chalk from 'chalk' import cron from 'node-cron' import readline from 'readline' import qrcode from 'qrcode-terminal' import NodeCache from 'node-cache' import moment from 'moment-timezone' import { Boom } from '@hapi/boom' import { toBuffer } from 'qrcode' import { createRequire } from 'module' import { fileURLToPath } from 'url' import { parsePhoneNumber } from 'awesome-phonenumber'
 
 import WAConnection, { useMultiFileAuthState, Browsers, DisconnectReason, makeCacheableSignalKeyStore, fetchLatestWaWebVersion } from 'baileys'
 
@@ -12,13 +14,13 @@ const tempDir = path.join(__dirname,'database/temp') if(!fs.existsSync(tempDir))
 
 dns.setServers(['1.1.1.1','8.8.8.8']) process.setMaxListeners(0)
 
-// ========================= GLOBAL ========================= let activeNazeInstance=null let restartLock=false let reconnectAttempts=0 let phoneNumber
+// ========================= GLOBAL ========================= let activeNazeInstance = null let restartLock = false let reconnectAttempts = 0 let phoneNumber
 
-global.intervals=[] global.timeouts=[] global.messageMap=new Map() global.store = global.store || {}
+global.intervals = [] global.timeouts = [] global.messageMap = new Map() global.store = global.store || {}
 
 // ========================= SAFE TIMER ========================= function safeInterval(fn,t){const x=setInterval(fn,t);global.intervals.push(x);return x} function safeTimeout(fn,t){const x=setTimeout(fn,t);global.timeouts.push(x);return x}
 
-// ========================= LOAD MESSAGE FIX ========================= global.loadMessage = async (jid,id)=>{ try{ const arr=global.store?.messages?.[jid]?.array if(!Array.isArray(arr)) return null return arr.find(m=>m?.key?.id===id)||null }catch{return null} }
+// ========================= LOAD MESSAGE FIX ========================= global.loadMessage = async (jid,id)=>{ try{ const arr = global.store?.messages?.[jid]?.array if(!Array.isArray(arr)) return null return arr.find(m=>m?.key?.id===id)||null }catch{return null} }
 
 // ========================= CLEANUP ========================= async function cleanup(reason){ console.log(chalk.yellow([CLEANUP] ${reason}))
 
@@ -42,7 +44,6 @@ activeNazeInstance=null
 reconnectAttempts++
 
 const delay=Math.min(reconnectAttempts*4000,60000)
-
 console.log(chalk.yellow(`[RESTART] ${reason} ${delay}ms`))
 
 await cleanup(reason)
@@ -59,7 +60,7 @@ setTimeout(async()=>{
 
 }
 
-// ========================= FETCH API (NO CHANGE CORE) ========================= global.fetchApi=async(endpoint='/',data={},opt={})=>{ try{ const base=global.APIs?.naze const apikey=global.APIKeys?.[base]||''
+// ========================= FETCH API ========================= global.fetchApi=async(endpoint='/',data={},opt={})=>{ try{ const base=global.APIs?.naze const apikey=global.APIKeys?.[base]||''
 
 let url=base+endpoint
 
@@ -132,7 +133,6 @@ naze.ev.on('connection.update',async(u)=>{
 naze.ev.on('call',async(call)=>{
     try{
         if(!Array.isArray(call)) return
-
         for(const c of call){
             if(c.status==='offer'){
                 await naze.rejectCall(c.id,c.from)
