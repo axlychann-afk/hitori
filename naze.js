@@ -2310,8 +2310,11 @@ Select Bot Settings:
 			break
 			case 'hd': case 'remini': case 'hdr': case 'tes': {
     if (!isLimit) return m.reply(global.mess.limit);
-    if (!m.quoted || !/image/.test(m.quoted.mimetype)) {
-        return m.reply(`Kirim/reply gambar dengan caption *${prefix + command}*`);
+    
+    // Cek gambar dari reply ATAU dari kiriman langsung (caption)
+    let quotedMsg = m.quoted || m;
+    if (!/image/.test(quotedMsg.mimetype)) {
+        return m.reply(`Kirim gambar dengan caption *${prefix + command}* ATAU reply gambar yang sudah ada`);
     }
     m.react('⏳');
     
@@ -2322,8 +2325,8 @@ Select Bot Settings:
         const FormData = require('form-data');
         const form = new FormData();
         
-        // Download gambar
-        mediaPath = await naze.downloadAndSaveMediaMessage(m.quoted);
+        // Download gambar dari sumber yang benar (reply atau langsung)
+        mediaPath = await naze.downloadAndSaveMediaMessage(quotedMsg);
         form.append('method', '1');
         form.append('is_pro_version', 'false');
         form.append('is_enhancing_more', 'false');
@@ -2353,7 +2356,7 @@ Select Bot Settings:
         if (mediaPath && fs.existsSync(mediaPath)) fs.unlinkSync(mediaPath);
     }
 }
-break;			
+break;
 			case 'dehaze': case 'colorize': case 'colorfull': {
     if (!isLimit) return m.reply(global.mess.limit)
     if (/image/.test(mime)) {
