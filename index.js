@@ -52,6 +52,9 @@ let latestQr = null;
 // Owner number fix
 const ownerNumber = global.owner || [];
 
+// Set max listeners
+process.setMaxListeners(20);
+
 // QR Route - dipasang sekali di luar event connection.update
 app.get('/qr', async (req, res) => {
     if (!latestQr) {
@@ -440,7 +443,7 @@ async function startNazeBot() {
     });
 
     activeNazeInstance = naze;
-    naze.ev.setMaxListeners(20);
+    // HAPUS: naze.ev.setMaxListeners(20); // Method ini tidak ada di Baileys
 
     if (pairingCode && !phoneNumber && !naze.authState.creds.registered) {
         async function getPhoneNumber() {
