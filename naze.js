@@ -3081,37 +3081,126 @@ break
     }
 }
 break
-			case 'ytmp4': case 'ytvideo': case 'ytplayvideo': {
-    if (!isLimit) return m.reply(global.mess.limit)
-    if (!text) return m.reply(`Example: ${prefix + command} url_youtube`)
-    if (!text.includes('youtu')) return m.reply('Url Tidak Mengandung Result Dari Youtube!')
-    m.react('⏳')
-    const downloadVideo = async (resolusi) => {
-        const apiUrl = `https://api.nexray.eu.cc/downloader/ytmp4?url=${encodeURIComponent(text)}&resolusi=${resolusi}`
-        // Contoh link: https://api.nexray.eu.cc/downloader/ytmp4?url=https%3A%2F%2Fyoutube.com%2Fwatch%3Fv%3DgmFnfTj_1Nc&resolusi=360
-        const { data } = await axios.get(apiUrl)
-        if (data.status && data.result) return data.result
-        throw new Error('Gagal mendapatkan data video')
+			case 'ytmp4': case 'ytvideo': case 'mp4': {
+    if (!text) {
+        return m.reply(`🎬 *YouTube Video Downloader*\n\n📌 *Cara Penggunaan:*\n   ${prefix + command} <link> <resolusi>\n\n💡 *Contoh:*\n   ${prefix + command} https://youtu.be/abc123 720`);
     }
-    try {
-        // Coba resolusi tinggi dulu (720), fallback ke 360
-        let hasil
+
+    const argsList = text.split(' ');
+    const link = argsList[0];
+    const resolution = argsList[1] || '360';
+
+    const isValidUrl = (url) => /https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(url);
+    if (!isValidUrl(link)) return m.reply('❌ Link tidak valid! Pastikan link YouTube.');
+
+    m.react('⏳');
+
+    // ================== SCRAPER LANGSUNG DI SINI ==================
+    const delay = ms => new Promise(res => setTimeout(res, ms));
+    
+    const extractVideoId = (url) => {
         try {
-            hasil = await downloadVideo('720')
-        } catch {
-            hasil = await downloadVideo('360')
+            const u = new URL(url);
+            if (u.searchParams.get('v')) return u.searchParams.get('v');
+            if (u.hostname.includes('youtu.be')) return u.pathname.split('/')[1];
+            if (u.pathname.includes('/shorts/')) return u.pathname.split('/shorts/')[1];
+            return null;
+        } catch { return null; }
+    };
+
+    const buildThumbnail = (url) => {
+        const id = extractVideoId(url);
+        return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null;
+    };
+
+    async function ytmp4(url, quality = '360') {
+        // FALLBACK 1: ytdl-core (paling stabil)
+        try {
+            const ytdl = await import('ytdl-core');
+            const info = await ytdl.default.getInfo(url);
+            const format = info.formats.find(f => f.container === 'mp4' && f.qualityLabel === `${quality}p`);
+            if (!format) throw new Error(`Resolusi ${quality}p tidak tersedia`);
+            return {
+                title: info.videoDetails.title,
+                downloadUrl: format.url,
+                thumbnail: buildThumbnail(url)
+            };
+        } catch (e1) {
+            console.log('ytdl-core gagal, coba fallback...');
+            
+            // FALLBACK 2: p.lbserver.xyz
+            try {
+                const { data } = await axios.get('https://p.lbserver.xyz/ajax/download.php', {
+                    params: { format: quality, url },
+                    timeout: 15000
+                });
+                if (!data?.progress_url) throw new Error('No progress_url');
+                
+                for (let i = 0; i < 30; i++) {
+                    await delay(1000);
+                    const { data: res } = await axios.get(data.progress_url);
+                    if (res.progress >= 1000 && res.download_url) {
+                        return {
+                            title: data.title || 'Video',
+                            downloadUrl: res.download_url,
+                            thumbnail: buildThumbnail(url)
+                        };
+                    }
+                }
+                throw new Error('Timeout');
+            } catch (e2) {
+                console.log('lbserver gagal, coba fallback savenow...');
+                
+                // FALLBACK 3: savenow.to
+                try {
+                    const { data } = await axios.get('https://p.savenow.to/ajax/download.php', {
+                        params: { format: quality, url, api: 'dfcb6d76f2f6a9894gjkege8a4ab232222' },
+                        timeout: 15000
+                    });
+                    for (let i = 0; i < 30; i++) {
+                        await delay(2000);
+                        const { data: res } = await axios.get(data.progress_url);
+                        if (res.success && res.download_url) {
+                            return {
+                                title: data.info?.title || 'Video',
+                                downloadUrl: res.download_url,
+                                thumbnail: data.info?.image || buildThumbnail(url)
+                            };
+                        }
+                    }
+                    throw new Error('Timeout');
+                } catch (e3) {
+                    throw new Error('Semua server gagal');
+                }
+            }
         }
-        await m.reply({
-            video: { url: hasil.download_url || hasil.url },
-            caption: `*📍Title:* ${hasil.title || '-'}\n*✏Description:* ${hasil.desc || ''}\n*🚀Channel:* ${hasil.channel || hasil.uploader || '-'}\n*🗓Upload at:* ${hasil.upload_date || '-'}\n*⏳Duration:* ${hasil.duration || '-'}`
-        })
-        setLimit(m, db)
-    } catch (e) {
-        console.log(e)
-        m.reply(global.mess.fail)
+    }
+    // ================== END SCRAPER ==================
+
+    try {
+        const data = await ytmp4(link, resolution);
+        if (!data || !data.downloadUrl) throw new Error('Gagal ambil link download');
+
+        const resData = await axios.get(data.downloadUrl, { responseType: 'arraybuffer' });
+        const buffer = Buffer.from(resData.data);
+        const fileSizeMB = buffer.length / (1024 * 1024);
+
+        const caption = `🎥 *Judul:* ${data.title || '-'}\n📌 *Resolusi:* ${resolution}p\n💾 *Ukuran:* ${fileSizeMB.toFixed(2)} MB`;
+
+        if (fileSizeMB > 100) {
+            await m.reply({ document: buffer, mimetype: 'video/mp4', fileName: `${data.title || 'video'}.mp4`, caption });
+        } else {
+            await m.reply({ video: buffer, caption });
+        }
+
+        m.react('✅');
+    } catch (err) {
+        console.error(err);
+        m.react('❌');
+        m.reply('❌ Gagal download video. Coba lagi nanti.');
     }
 }
-			break
+break;
 			
        	case 'ig': case 'instagram': case 'instadl': case 'igdown': case 'igdl': {
     if (!isLimit) return m.reply(global.mess.limit)
